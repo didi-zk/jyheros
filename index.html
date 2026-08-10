@@ -14,6 +14,31 @@
     <div class="container">
         <h1>金庸群侠传</h1>
 
+        <!-- 角色简历面板 -->
+        <div class="char-panel" id="char-panel">
+            <div class="char-panel-left">
+                <div class="avatar" id="char-avatar">🗡️</div>
+                <div class="char-name" id="char-name">未创建</div>
+                <div class="char-school" id="char-school">--</div>
+                <div class="char-date" id="char-date">金元--年--月--日</div>
+            </div>
+            <div class="char-panel-right">
+                <div class="attr-row"><span>等级</span><span id="char-level">1</span></div>
+                <div class="attr-row"><span>经验</span><span id="char-exp">0</span>/<span id="char-max-exp">100</span>
+                </div>
+                <div class="attr-row"><span>气血</span><span id="char-hp">100</span>/<span id="char-max-hp">100</span>
+                </div>
+                <div class="attr-row"><span>内力</span><span id="char-mp">50</span>/<span id="char-max-mp">50</span></div>
+                <div class="attr-row"><span>攻击</span><span id="char-atk">10</span></div>
+                <div class="attr-row"><span>防御</span><span id="char-def">5</span></div>
+                <div class="attr-row"><span>银两</span><span id="char-money">0</span></div>
+            </div>
+            <div class="char-panel-actions">
+                <button class="btn-small" onclick="openBagModal()">物品栏</button>
+                <button class="btn-small" onclick="saveGame()">存档</button>
+            </div>
+        </div>
+
         <!-- 音效控制 -->
         <div class="sound-control">
             <span>音效：</span>
@@ -25,18 +50,6 @@
             <button onclick="document.getElementById('bgm-file').click()">📁选曲</button>
             <input type="file" id="bgm-file" accept="audio/*" style="display:none" onchange="loadBgmFile(event)">
             <span id="bgm-name" style="font-size:0.85rem;color:#666;"></span>
-        </div>
-
-        <!-- 状态条 -->
-        <div class="status-bar">
-            <div class="status-item">角色：<span id="char-name">未创建</span></div>
-            <div class="status-item">等级：<span id="char-level">1</span></div>
-            <div class="status-item">经验：<span id="char-exp">0</span>/<span id="char-max-exp">100</span></div>
-            <div class="status-item">气血：<span id="char-hp">100</span>/<span id="char-max-hp">100</span></div>
-            <div class="status-item">内力：<span id="char-mp">50</span>/<span id="char-max-mp">50</span></div>
-            <div class="status-item">银两：<span id="char-money">0</span></div>
-            <button class="btn-small" onclick="openBagModal()">物品栏(B)</button>
-            <button class="btn-small" onclick="saveGame()">存档(S)</button>
         </div>
 
         <!-- 游戏主面板 -->
@@ -64,8 +77,8 @@
                 <input type="text" id="char-name-input" placeholder="请输入你的江湖名号">
             </div>
             <div class="form-group">
-                <label for="char-school">选择门派：</label>
-                <select id="char-school">
+                <label for="char-school-select">选择门派：</label>
+                <select id="char-school-select">
                     <option value="少林">少林（气血深厚，金刚不坏）</option>
                     <option value="武当">武当（太极剑法，内力绵长）</option>
                     <option value="丐帮">丐帮（降龙十八掌，刚猛无俦）</option>

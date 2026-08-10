@@ -313,8 +313,8 @@ function runAction(actionName) {
             break;
         case "trainAtk":
             if (!char) break;
-            if (char.trainedAtk) {
-                addLog("你已经练过此处的武功，馆主摇摇头表示无法再教你。");
+            if (char.lastTrainMonth === getGameMonthKey()) {
+                addLog("这个月你已练过武功，下个月再来吧。");
                 break;
             }
             if (char.money < 40) {
@@ -323,7 +323,7 @@ function runAction(actionName) {
             }
             char.money -= 40;
             char.attack += 3;
-            char.trainedAtk = true;
+            char.lastTrainMonth = getGameMonthKey();
             addLog("你刻苦练功，攻击力提升3点！");
             playSound("gain");
             saveGame();
@@ -558,7 +558,7 @@ function closeCreateCharModal() {
 
 function createCharacter() {
     const nameInput = document.getElementById("char-name-input");
-    const schoolSel = document.getElementById("char-school");
+    const schoolSel = document.getElementById("char-school-select");
     const name = nameInput ? nameInput.value.trim() : "";
     const school = schoolSel ? schoolSel.value : "通用";
     if (!name) {
@@ -585,7 +585,12 @@ function createCharacter() {
             { ...gameData.items[1] }
         ],
         attack: 10 + atkBonus,
-        defense: 5 + defBonus
+        defense: 5 + defBonus,
+        realStart: Date.now(),
+        gameYear: 1,
+        gameMonth: 1 + Math.floor(Math.random() * 12),
+        gameDay: 1 + Math.floor(Math.random() * 30),
+        avatar: Math.floor(Math.random() * 6)
     };
     // 分配初始武学（门派专属武学优先）
     const initWu = gameData.martialArts.find(m => m.school === school) ||
@@ -611,6 +616,40 @@ function createCharacter() {
     playSound("gain");
     renderScene();
 }
+
+// ========== 时间系统 ==========
+// 现实 10 分钟 = 游戏 1 天
+const GAME_DAY_MS = 10 * 60 * 1000;
+
+function getGameDate() {
+    const char = gameData.character;
+    if (!char) return { year: 1, month: 1, day: 1 };
+    const elapsedMs = Date.now() - char.realStart;
+    const gameDaysElapsed = Math.floor(elapsedMs / GAME_DAY_MS);
+    let totalDays = char.gameDay + gameDaysElapsed - 1;
+    let month = char.gameMonth;
+    let year = char.gameYear;
+    while (totalDays >= 30) {
+        totalDays -= 30;
+        month++;
+        if (month > 12) {
+            month -= 12;
+            year++;
+        }
+    }
+    return { year, month, day: totalDays + 1 };
+}
+
+function formatDate() {
+    const d = getGameDate();
+    return `金元${d.year}年${d.month}月${d.day}日`;
+}
+
+function getGameMonthKey() {
+    const d = getGameDate();
+    return d.year * 12 + d.month;
+}
+
 // ========== 经验升级系统 ==========
 function addExp(amount) {
     const char = gameData.character;
@@ -640,19 +679,30 @@ function checkLevelUp() {
     saveGame();
 }
 // ========== 状态栏更新 ==========
+const AVATARS = ["🗡️", "⚔️", "🏹", "🪭", "🧘", "👤"];
+
 function updateStatusBar() {
     const c = gameData.character;
     const nameEl = document.getElementById("char-name");
-    const expEl = document.getElementById("char-exp");
-    const maxExpEl = document.getElementById("char-max-exp");
+    const schoolEl = document.getElementById("char-school");
+    const avatarEl = document.getElementById("char-avatar");
+    const atkEl = document.getElementById("char-atk");
+    const defEl = document.getElementById("char-def");
+    const dateEl = document.getElementById("char-date");
     const levelEl = document.getElementById("char-level");
     const hpEl = document.getElementById("char-hp");
     const maxHpEl = document.getElementById("char-max-hp");
     const mpEl = document.getElementById("char-mp");
     const maxMpEl = document.getElementById("char-max-mp");
     const moneyEl = document.getElementById("char-money");
+    const expEl = document.getElementById("char-exp");
+    const maxExpEl = document.getElementById("char-max-exp");
     if (!c) {
         if (nameEl) nameEl.innerText = "未创建";
+        if (schoolEl) schoolEl.innerText = "--";
+        if (avatarEl) avatarEl.innerText = "❓";
+        if (atkEl) atkEl.innerText = "0";
+        if (defEl) defEl.innerText = "0";
         if (levelEl) levelEl.innerText = "1";
         if (hpEl) hpEl.innerText = "0";
         if (maxHpEl) maxHpEl.innerText = "0";
@@ -664,6 +714,9 @@ function updateStatusBar() {
         return;
     }
     if (nameEl) nameEl.innerText = c.name;
+    if (schoolEl) schoolEl.innerText = c.school + "派";
+    if (avatarEl) avatarEl.innerText = AVATARS[c.avatar] || "🗡️";
+    if (dateEl) dateEl.innerText = formatDate();
     if (levelEl) levelEl.innerText = c.level;
     if (hpEl) hpEl.innerText = c.hp;
     if (maxHpEl) maxHpEl.innerText = c.maxHp;
@@ -672,6 +725,8 @@ function updateStatusBar() {
     if (moneyEl) moneyEl.innerText = c.money;
     if (expEl) expEl.innerText = c.exp;
     if (maxExpEl) maxExpEl.innerText = c.maxExp;
+    if (atkEl) atkEl.innerText = c.attack;
+    if (defEl) defEl.innerText = c.defense;
 }
 
 // ========== 背包（使用 modal 而非 alert）==========
@@ -953,6 +1008,19 @@ function loadGame() {
             gameData.character = saved.character;
             gameData.currentScene = saved.currentScene ?? "start";
             if (gameData.character) {
+                // 兼容旧存档：如果没有 realStart，用当前时间
+                if (!gameData.character.realStart) {
+                    gameData.character.realStart = Date.now();
+                    gameData.character.gameYear = 1;
+                    gameData.character.gameMonth = 1 + Math.floor(Math.random() * 12);
+                    gameData.character.gameDay = 1 + Math.floor(Math.random() * 30);
+                }
+                if (gameData.character.avatar === undefined) {
+                    gameData.character.avatar = Math.floor(Math.random() * 6);
+                }
+                if (gameData.character.school === undefined) {
+                    gameData.character.school = "通用";
+                }
                 addLog("系统：已加载存档，欢迎继续你的江湖之旅！", "system");
             }
         }
@@ -969,4 +1037,11 @@ window.onload = function () {
         bgmAudio.volume = globalVolume * 0.5;
         bgmAudio.loop = true;
     } catch (e) { }
+    // 每秒更新日期显示
+    setInterval(() => {
+        const dateEl = document.getElementById("char-date");
+        if (dateEl && gameData.character) {
+            dateEl.innerText = formatDate();
+        }
+    }, 1000);
 }
