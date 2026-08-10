@@ -283,6 +283,100 @@ h1 {
     color: #8b0000;
 }
 
+.shop-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.shop-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.shop-info {
+    flex: 1;
+}
+
+.shop-name {
+    font-weight: bold;
+    color: #8b0000;
+}
+
+.shop-desc {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.shop-price {
+    font-size: 0.8rem;
+    color: #999;
+}
+
+.shop-limit {
+    font-size: 0.75rem;
+    color: #c00;
+}
+
+.shop-qty {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.shop-qty button {
+    width: 26px;
+    height: 26px;
+    border: 1px solid #ccc;
+    background: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.shop-qty button:hover {
+    background: #f0f0f0;
+}
+
+.shop-qty button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.shop-qty span {
+    min-width: 28px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.shop-buy-btn {
+    padding: 6px 12px;
+    background: #8b0000;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.shop-buy-btn:hover {
+    background: #a00000;
+}
+
+.shop-buy-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.shop-sold-out {
+    color: #c00;
+    font-size: 0.8rem;
+}
+
 .form-group {
     margin-bottom: 15px;
 }

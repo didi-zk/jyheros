@@ -40,9 +40,7 @@ const gameData = {
             title: "杂货铺",
             desc: "铺中摆放着各种江湖必备之物，掌柜笑眯眯地看着你。",
             options: [
-                { text: "购买金疮药(20银两)", action: "buyHp" },
-                { text: "购买清水(15银两)", action: "buyMp" },
-                { text: "购买铁布衫(50银两,永久+3防御)", action: "buyDef" },
+                { text: "浏览商品", action: "openShop" },
                 { text: "返回城门", next: "start" }
             ]
         },
@@ -103,9 +101,15 @@ const gameData = {
         { name: "清水", desc: "恢复20内力", type: "mp", value: 20, count: 1 }
     ],
     shopItems: [
-        { name: "金疮药", desc: "恢复40气血", type: "hp", value: 40, price: 20 },
-        { name: "清水", desc: "恢复20内力", type: "mp", value: 20, price: 15 },
-        { name: "铁布衫", desc: "永久增加3点防御", type: "def", value: 3, price: 50 }
+        { name: "金疮药", desc: "恢复40气血", type: "hp", value: 40, price: 20, maxLimit: 0 },
+        { name: "清水", desc: "恢复20内力", type: "mp", value: 20, price: 15, maxLimit: 0 },
+        { name: "大还丹", desc: "恢复80气血", type: "hp", value: 80, price: 50, maxLimit: 0 },
+        { name: "内力丹", desc: "恢复50内力", type: "mp", value: 50, price: 40, maxLimit: 0 },
+        { name: "铁布衫", desc: "永久增加3点防御", type: "def", value: 3, price: 50, maxLimit: 1 },
+        { name: "攻击秘籍", desc: "永久增加2点攻击", type: "atk", value: 2, price: 150, maxLimit: 3 },
+        { name: "内力心法", desc: "永久增加20最大内力", type: "maxmp", value: 20, price: 120, maxLimit: 3 },
+        { name: "强身健体", desc: "永久增加30最大气血", type: "maxhp", value: 30, price: 120, maxLimit: 3 },
+        { name: "雪莲", desc: "战斗中使用，恢复150气血", type: "hp", value: 150, price: 100, maxLimit: 5 }
     ],
     enemyList: [
         { name: "山贼", hp: 60, maxHp: 60, attack: 8, defense: 2, money: 30, exp: 20 },
@@ -355,14 +359,8 @@ function runAction(actionName) {
             saveGame();
             renderScene();
             break;
-        case "buyHp":
-            buyShopItem("hp");
-            break;
-        case "buyMp":
-            buyShopItem("mp");
-            break;
-        case "buyDef":
-            buyShopItem("def");
+        case "openShop":
+            openShopModal();
             break;
         case "meetEnemy":
             triggerRandomEvent();
@@ -426,7 +424,7 @@ function joinDuel() {
     addLogSeparator("比武招亲");
     addLog("你跳上擂台，与小姐的护卫交手！", "event");
     setTimeout(() => {
-        const winRate = 0.4 + (char.level - 2) * 0.1 + char.attack * 0.01;
+        const winRate = 0.15 + (char.level - 2) * 0.06 + char.attack * 0.003;
         if (Math.random() < winRate) {
             const reward = 50 + char.level * 20;
             char.money += reward;
@@ -551,42 +549,156 @@ function triggerRandomEvent() {
     }
     renderScene();
 }
-// ========== 商店购买 ==========
-function buyShopItem(type) {
+// ========== 商店系统 ==========
+let _shopQuantities = {};
+
+function openShopModal() {
+    const modal = document.getElementById("shop-modal");
+    if (modal) modal.style.display = "flex";
+    renderShopList();
+}
+
+function closeShopModal() {
+    const modal = document.getElementById("shop-modal");
+    if (modal) modal.style.display = "none";
+}
+
+function renderShopList() {
+    const char = gameData.character;
+    const container = document.getElementById("shop-list");
+    if (!container) return;
+    if (!char) {
+        container.innerHTML = "<p style='text-align:center'>请先创建角色</p>";
+        return;
+    }
+    let html = "";
+    gameData.shopItems.forEach((item, idx) => {
+        const typeKey = item.type + "_" + item.name;
+        if (_shopQuantities[typeKey] === undefined) _shopQuantities[typeKey] = 1;
+        const qty = _shopQuantities[typeKey];
+
+        let purchased = 0;
+        if (item.maxLimit > 0) {
+            if (item.type === "def") purchased = char.boughtIronCloth ? 1 : 0;
+            else if (item.type === "atk") purchased = char.boughtAtk || 0;
+            else if (item.type === "maxmp") purchased = char.boughtMaxMp || 0;
+            else if (item.type === "maxhp") purchased = char.boughtMaxHp || 0;
+        }
+        const remaining = item.maxLimit > 0 ? item.maxLimit - purchased : -1;
+        const soldOut = item.maxLimit > 0 && remaining <= 0;
+
+        const totalPrice = item.price * (soldOut ? 0 : qty);
+        const canAfford = char.money >= totalPrice;
+
+        let limitInfo = "";
+        if (item.maxLimit > 0) {
+            limitInfo = remaining > 0
+                ? `<span class="shop-limit">限购 ${item.maxLimit} 次，剩余 ${remaining} 次</span>`
+                : `<span class="shop-sold-out">已售罄</span>`;
+        }
+
+        html += `
+        <div class="shop-item">
+            <div class="shop-info">
+                <div class="shop-name">${item.name}</div>
+                <div class="shop-desc">${item.desc}</div>
+                <div class="shop-price">${item.price} 银两 / 件 ${limitInfo}</div>
+            </div>
+            <div class="shop-qty">
+                <button onclick="shopQtyMinus('${typeKey}')" ${soldOut || qty <= 1 ? 'disabled' : ''}>-</button>
+                <span>${qty}</span>
+                <button onclick="shopQtyPlus('${typeKey}')" ${soldOut ? 'disabled' : ''}>+</button>
+            </div>
+            <button class="shop-buy-btn"
+                onclick="shopBuy('${typeKey}', ${idx})"
+                ${soldOut || !canAfford ? 'disabled' : ''}>
+                ${soldOut ? '已购完' : '购买'}
+            </button>
+        </div>`;
+    });
+    container.innerHTML = html;
+}
+
+function shopQtyMinus(key) {
+    if (_shopQuantities[key] > 1) {
+        _shopQuantities[key]--;
+        renderShopList();
+    }
+}
+
+function shopQtyPlus(key) {
+    if (_shopQuantities[key] < 99) {
+        _shopQuantities[key]++;
+        renderShopList();
+    }
+}
+
+function shopBuy(key, idx) {
     const char = gameData.character;
     if (!char) return;
-    const item = gameData.shopItems.find(si => si.type === type);
-    if (!item) {
-        addLog("商店里没有这种东西！");
+    const item = gameData.shopItems[idx];
+    if (!item) return;
+    const qty = _shopQuantities[key] || 1;
+
+    if (item.maxLimit > 0) {
+        let purchased = 0;
+        if (item.type === "def") purchased = char.boughtIronCloth ? 1 : 0;
+        else if (item.type === "atk") purchased = char.boughtAtk || 0;
+        else if (item.type === "maxmp") purchased = char.boughtMaxMp || 0;
+        else if (item.type === "maxhp") purchased = char.boughtMaxHp || 0;
+        const remaining = item.maxLimit - purchased;
+        if (remaining <= 0) {
+            addLog(`【${item.name}】已购完！`, "event");
+            renderShopList();
+            return;
+        }
+        if (qty > remaining) {
+            addLog(`【${item.name}】限购${item.maxLimit}次，剩余${remaining}次，不能购买${qty}件！`, "event");
+            return;
+        }
+    }
+
+    const totalPrice = item.price * qty;
+    if (char.money < totalPrice) {
+        addLog(`银两不足！【${item.name}】×${qty}需要${totalPrice}银两。`);
+        renderShopList();
         return;
     }
-    // 铁布衫特殊检查：只能买一次
-    if (type === "def" && char.boughtIronCloth) {
-        addLog("你已经练过铁布衫，无需再买！");
-        return;
-    }
-    if (char.money < item.price) {
-        addLog(`银两不足！【${item.name}】需要${item.price}银两。`);
-        return;
-    }
-    char.money -= item.price;
-    if (type === "def") {
+
+    char.money -= totalPrice;
+
+    if (item.type === "def") {
         char.defense += item.value;
         char.boughtIronCloth = true;
-        addLog(`你购买了【${item.name}】，防御永久+${item.value}！`);
+        addLog(`你购买了【${item.name}】，防御永久+${item.value}！`, "event");
+    } else if (item.type === "atk") {
+        char.attack += item.value;
+        char.boughtAtk = (char.boughtAtk || 0) + 1;
+        addLog(`你修炼了【${item.name}】，攻击永久+${item.value}！`, "event");
+    } else if (item.type === "maxmp") {
+        char.maxMp += item.value;
+        char.mp += item.value;
+        char.boughtMaxMp = (char.boughtMaxMp || 0) + 1;
+        addLog(`你修炼了【${item.name}】，最大内力永久+${item.value}！`, "event");
+    } else if (item.type === "maxhp") {
+        char.maxHp += item.value;
+        char.hp += item.value;
+        char.boughtMaxHp = (char.boughtMaxHp || 0) + 1;
+        addLog(`你修炼了【${item.name}】，最大气血永久+${item.value}！`, "event");
     } else {
         const existing = char.items.find(i => i.name === item.name);
         if (existing) {
-            existing.count++;
+            existing.count += qty;
         } else {
-            char.items.push({ name: item.name, desc: item.desc, type: item.type, value: item.value, count: 1 });
+            char.items.push({ name: item.name, desc: item.desc, type: item.type, value: item.value, count: qty });
         }
-        addLog(`你购买了【${item.name}】！`);
+        addLog(`你购买了【${item.name}】×${qty}！`);
     }
+
     playSound("gain");
     saveGame();
     updateStatusBar();
-    renderScene();
+    renderShopList();
 }
 // ========== 角色创建弹窗 ==========
 function openCreateCharModal() {
@@ -1066,6 +1178,10 @@ function loadGame() {
                 if (gameData.character.school === undefined) {
                     gameData.character.school = "通用";
                 }
+                if (gameData.character.boughtAtk === undefined) gameData.character.boughtAtk = 0;
+                if (gameData.character.boughtMaxMp === undefined) gameData.character.boughtMaxMp = 0;
+                if (gameData.character.boughtMaxHp === undefined) gameData.character.boughtMaxHp = 0;
+                if (gameData.character.boughtIronCloth === undefined) gameData.character.boughtIronCloth = false;
                 addLog("系统：已加载存档，欢迎继续你的江湖之旅！", "system");
             }
         }
