@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,21 +9,28 @@
     <!-- Prevent browser requesting /favicon.ico and logging 404 by providing an empty data URI favicon -->
     <link rel="icon" href="data:,">
 </head>
+
 <body>
     <div class="container">
         <h1>金庸群侠传</h1>
 
-        <!-- 新增：音量控制 -->
+        <!-- 音量控制 + 背景音乐 -->
         <div class="sound-control">
             <button id="toggle-sound" onclick="toggleSound()">🔊 音效开</button>
             <span>音量：</span>
             <input type="range" id="volume" min="0" max="100" value="70" oninput="setVolume(this.value)">
+            <hr style="width:1px;height:20px;border:none;border-left:1px solid #ccc;margin:0 5px;">
+            <input type="file" id="bgm-file" accept="audio/*" style="display:none" onchange="loadBgmFile(event)">
+            <button id="bgm-btn" onclick="document.getElementById('bgm-file').click()">🎵 选曲</button>
+            <button id="bgm-play" onclick="toggleBgm()">▶ 播放</button>
+            <span id="bgm-name" style="font-size:0.85rem;color:#666;"></span>
         </div>
 
         <!-- 状态条 -->
         <div class="status-bar">
             <div class="status-item">角色：<span id="char-name">未创建</span></div>
             <div class="status-item">等级：<span id="char-level">1</span></div>
+            <div class="status-item">经验：<span id="char-exp">0</span>/<span id="char-max-exp">100</span></div>
             <div class="status-item">气血：<span id="char-hp">100</span>/<span id="char-max-hp">100</span></div>
             <div class="status-item">内力：<span id="char-mp">50</span>/<span id="char-max-mp">50</span></div>
             <div class="status-item">银两：<span id="char-money">0</span></div>
@@ -95,4 +103,5 @@
 
     <script src="./game.js"></script>
 </body>
+
 </html>
