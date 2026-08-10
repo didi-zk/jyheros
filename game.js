@@ -128,6 +128,11 @@ let soundEnabled = true;   // 游戏音效开关
 let globalVolume = 0.7;    // 音量 0.0 - 1.0
 let bgmAudio = null;       // 背景音乐Audio对象
 
+function setVolume(val) {
+    globalVolume = parseFloat(val) / 100;
+    if (bgmAudio) bgmAudio.volume = globalVolume * 0.5;
+}
+
 // 播放游戏音效（click/hurt/gain等）
 function playSound(filename) {
     if (!soundEnabled) return;
@@ -307,14 +312,21 @@ function runAction(actionName) {
             addLog("酒客：听说郊外最近山贼作乱！");
             break;
         case "trainAtk":
-            if (char && char.money >= 40) {
-                char.money -= 40;
-                char.attack += 3;
-                addLog("你刻苦练功，攻击力提升3点！");
-                playSound("gain");
-            } else {
-                addLog("银两不够！");
+            if (!char) break;
+            if (char.trainedAtk) {
+                addLog("你已经练过此处的武功，馆主摇摇头表示无法再教你。");
+                break;
             }
+            if (char.money < 40) {
+                addLog("银两不够！需要40银两。");
+                break;
+            }
+            char.money -= 40;
+            char.attack += 3;
+            char.trainedAtk = true;
+            addLog("你刻苦练功，攻击力提升3点！");
+            playSound("gain");
+            saveGame();
             renderScene();
             break;
         case "buyHp":
@@ -667,7 +679,6 @@ function openBagModal() {
     const c = gameData.character;
     const container = document.getElementById("bag-content");
     if (!container) {
-        // fallback to old alert
         showBag();
         return;
     }
@@ -676,7 +687,9 @@ function openBagModal() {
     if (!c || c.items.length === 0) html += "<div>空空如也</div>";
     else {
         c.items.forEach((it, idx) => {
-            html += `<div class="bag-item">${idx + 1}. ${it.name} - ${it.desc}（x${it.count ?? 1}）</div>`;
+            html += `<div class="bag-item">${idx + 1}. ${it.name} - ${it.desc}（x${it.count ?? 1}）`;
+            html += ` <button class="btn-small" onclick="useItemByIndex(${idx});closeBagModal()">使用</button>`;
+            html += `</div>`;
         })
     }
     html += "<h4>武学</h4>";
@@ -831,34 +844,85 @@ function useItemInFight() {
         addLog("你没有可使用的物品！");
         return;
     }
-    let used = false;
-    for (let i = 0; i < char.items.length; i++) {
-        const it = char.items[i];
+    const fightOptions = document.querySelector('.fight-options');
+    if (!fightOptions) return;
+    let html = '<div style="margin-bottom:10px;">选择要使用的物品：</div>';
+    char.items.forEach((it, idx) => {
         if (it.count > 0) {
-            if (it.type === "hp" && char.hp < char.maxHp) {
-                char.hp = Math.min(char.maxHp, char.hp + it.value);
-                addLog(`你使用了【${it.name}】，恢复${it.value}点气血！`);
-                playSound("heal");
-                it.count--;
-                used = true;
-                break;
-            } else if (it.type === "mp" && char.mp < char.maxMp) {
-                char.mp = Math.min(char.maxMp, char.mp + it.value);
-                addLog(`你使用了【${it.name}】，恢复${it.value}点内力！`);
-                playSound("heal");
-                it.count--;
-                used = true;
-                break;
-            }
+            html += `<button class="btn" onclick="useItemByIndex(${idx})">${it.name} x${it.count}</button>`;
         }
+    });
+    html += '<button class="btn btn-cancel" onclick="restoreFightOptions()">取消</button>';
+    fightOptions.innerHTML = html;
+}
+
+function restoreFightOptions() {
+    const fightOptions = document.querySelector('.fight-options');
+    if (!fightOptions) return;
+    fightOptions.innerHTML = `
+        <button class="btn" onclick="playerAttack()">普通攻击</button>
+        <button class="btn" onclick="useSkill()">使用武学</button>
+        <button class="btn" onclick="useItemInFight()">使用物品</button>
+        <button class="btn btn-cancel" onclick="fleeFight()">逃跑</button>
+    `;
+}
+
+function useItemByIndex(idx) {
+    const char = gameData.character;
+    if (!char || !char.items[idx]) return;
+    const it = char.items[idx];
+    if (it.count <= 0) return;
+
+    if (gameData.inBattle) {
+        if (it.type === "hp" && char.hp >= char.maxHp) {
+            addLog("你气血已满，无需使用此物品。");
+            restoreFightOptions();
+            return;
+        }
+        if (it.type === "mp" && char.mp >= char.maxMp) {
+            addLog("你内力已满，无需使用此物品。");
+            restoreFightOptions();
+            return;
+        }
+        if (it.type === "hp") {
+            char.hp = Math.min(char.maxHp, char.hp + it.value);
+            addLog(`你使用了【${it.name}】，恢复${it.value}点气血！`);
+        } else if (it.type === "mp") {
+            char.mp = Math.min(char.maxMp, char.mp + it.value);
+            addLog(`你使用了【${it.name}】，恢复${it.value}点内力！`);
+        }
+        playSound("heal");
+        it.count--;
+        char.items = char.items.filter(i => i.count > 0);
+        updateFightInfo();
+        updateStatusBar();
+        enemyTurn();
+        restoreFightOptions();
+    } else {
+        if (it.type === "hp" && char.hp >= char.maxHp) {
+            addLog("你气血已满，无需使用此物品。");
+            return;
+        }
+        if (it.type === "mp" && char.mp >= char.maxMp) {
+            addLog("你内力已满，无需使用此物品。");
+            return;
+        }
+        if (it.type === "hp") {
+            const restore = Math.min(it.value, char.maxHp - char.hp);
+            char.hp += restore;
+            addLog(`你使用了【${it.name}】，恢复${restore}点气血！`);
+        } else if (it.type === "mp") {
+            const restore = Math.min(it.value, char.maxMp - char.mp);
+            char.mp += restore;
+            addLog(`你使用了【${it.name}】，恢复${restore}点内力！`);
+        }
+        playSound("heal");
+        it.count--;
+        char.items = char.items.filter(i => i.count > 0);
+        updateStatusBar();
+        saveGame();
+        renderScene();
     }
-    if (!used) {
-        addLog("没有合适的物品可以使用！");
-        return;
-    }
-    char.items = char.items.filter(it => it.count > 0);
-    updateFightInfo();
-    updateStatusBar();
 }
 
 function fleeFight() {
