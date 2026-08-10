@@ -115,7 +115,113 @@ const gameData = {
         { name: "黑衣人", hp: 110, maxHp: 110, attack: 14, defense: 4, money: 80, exp: 55 },
         { name: "赏金杀手", hp: 140, maxHp: 140, attack: 17, defense: 5, money: 120, exp: 80 },
         { name: "武林盟主", hp: 200, maxHp: 200, attack: 22, defense: 8, money: 200, exp: 150 }
-    ]
+    ],
+    quests: {
+        currentMain: 0,
+        completedMains: [],
+        sideFlags: {},
+        choices: {}
+    },
+    questDefs: {
+        mainList: [
+            { id: 1, name: "神雕侠侣", maxStage: 8 },
+            { id: 2, name: "笑傲江湖", maxStage: 0 },
+            { id: 3, name: "倚天屠龙记", maxStage: 0 },
+            { id: 4, name: "飞狐外传", maxStage: 0 },
+            { id: 5, name: "雪山飞狐", maxStage: 0 },
+            { id: 6, name: "连城诀", maxStage: 0 },
+            { id: 7, name: "天龙八部", maxStage: 0 },
+            { id: 8, name: "侠客行", maxStage: 0 },
+            { id: 9, name: "笑傲江湖", maxStage: 0 },
+            { id: 10, name: "鹿鼎记", maxStage: 0 },
+            { id: 11, name: "书剑恩仇录", maxStage: 0 },
+            { id: 12, name: "碧血剑", maxStage: 0 },
+            { id: 13, name: "鸳鸯刀", maxStage: 0 },
+            { id: 14, name: "白马啸西风", maxStage: 0 }
+        ],
+        sDiao: [
+            {
+                stage: 1,
+                title: "少年杨过",
+                desc: "酒馆内，一位忠厚老实的中年人正是郭靖郭大侠。他告诉你，一位叫杨过的少年流落江湖，需要有人相助。",
+                target: "前往酒馆找郭靖",
+                trigger: function (gd) { return gd.character && gd.character.level >= 3 && gd.quests.currentMain === 0; },
+                isDone: function (gd) { return gd.quests.currentMain >= 1; },
+                progress: function (gd) { return { current: 0, total: 1 }; },
+                reward: "开启神雕侠侣主线"
+            },
+            {
+                stage: 2,
+                title: "终南山",
+                desc: "郭靖带你来到终南山下，全真教丘处机道长接见了你。杨过决定拜入全真教门下。",
+                target: "正式拜入全真教",
+                trigger: function (gd) { return gd.quests.currentMain >= 1 && gd.quests.stage2Done; },
+                isDone: function (gd) { return gd.quests.currentMain >= 2; },
+                progress: function (gd) { return { current: gd.quests.stage2Done ? 1 : 0, total: 1 }; },
+                reward: "获得全真教内功心法（内力上限+10）"
+            },
+            {
+                stage: 3,
+                title: "全真教风波",
+                desc: "杨过在全真教受赵志敬、甄志丙等人排挤。深夜，杨过来到你面前，眼中满是悲愤。",
+                target: "为杨过主持公道",
+                trigger: function (gd) { return gd.quests.currentMain >= 2 && gd.quests.stage3Done; },
+                isDone: function (gd) { return gd.quests.currentMain >= 3; },
+                progress: function (gd) { return { current: gd.quests.stage3Done ? 1 : 0, total: 1 }; },
+                reward: "侠义值提升"
+            },
+            {
+                stage: 4,
+                title: "入古墓",
+                desc: "杨过叛出全真教后，被古墓派小龙女所救。你也随之前往，见识了那神秘的活死人墓。",
+                target: "探访古墓派",
+                trigger: function (gd) { return gd.quests.currentMain >= 3 && gd.quests.stage4Done; },
+                isDone: function (gd) { return gd.quests.currentMain >= 4; },
+                progress: function (gd) { return { current: gd.quests.stage4Done ? 1 : 0, total: 1 }; },
+                reward: "获得古墓派轻功（闪避提升）"
+            },
+            {
+                stage: 5,
+                title: "玉女心经",
+                desc: "杨过与小龙女在墓中合练玉女心经，却被甄志丙撞见。甄志丙起了歹心，你必须出手阻止！",
+                target: "击败甄志丙",
+                trigger: function (gd) { return gd.quests.currentMain >= 4 && gd.quests.stage5Done; },
+                isDone: function (gd) { return gd.quests.currentMain >= 5; },
+                progress: function (gd) { return { current: gd.quests.stage5Done ? 1 : 0, total: 1 }; },
+                reward: "经验×200，银两×300"
+            },
+            {
+                stage: 6,
+                title: "绝情谷",
+                desc: "小龙女为了救杨过，独自一人进入绝情谷。公孙绿萼告诉你，小龙女可能已中毒。",
+                target: "进入绝情谷寻找小龙女",
+                trigger: function (gd) { return gd.quests.currentMain >= 5 && gd.quests.stage6Done; },
+                isDone: function (gd) { return gd.quests.currentMain >= 6; },
+                progress: function (gd) { return { current: gd.quests.stage6Done ? 1 : 0, total: 1 }; },
+                reward: "获得寒玉床经验（内力上限+20）"
+            },
+            {
+                stage: 7,
+                title: "16年之约",
+                desc: "襄阳大战中，杨过为救郭襄中了冰魄银针剧毒。小龙女为了给他续命，跳下绝情谷，留下16年后在此重逢的约定。",
+                target: "等待16年之约",
+                trigger: function (gd) { return gd.quests.currentMain >= 6 && gd.quests.stage7Done; },
+                isDone: function (gd) { return gd.quests.currentMain >= 7; },
+                progress: function (gd) { return { current: gd.quests.stage7Done ? 1 : 0, total: 1 }; },
+                reward: "杨过传授黯然销魂掌（攻击+3）"
+            },
+            {
+                stage: 8,
+                title: "神雕侠侣",
+                desc: "16年后，你与杨过、小龙女在绝情谷重逢。此时蒙古大军围攻襄阳，郭靖、黄蓉守城。你随神雕侠侣共赴襄阳，抵御蒙哥大汗！",
+                target: "击败蒙哥大汗",
+                trigger: function (gd) { return gd.quests.currentMain >= 7 && gd.quests.stage8Ready; },
+                isDone: function (gd) { return gd.quests.currentMain >= 8; },
+                progress: function (gd) { return { current: gd.quests.currentMain >= 8 ? 1 : 0, total: 1 }; },
+                reward: "全属性+5，称号「神雕侠侣之友」，完成神雕侠侣主线！"
+            }
+        ]
+    }
 };
 
 // ========== DOM元素 ==========
@@ -411,7 +517,9 @@ function runAction(actionName) {
             renderScene();
             break;
         case "hearNews":
-            addLog("酒客：听说郊外最近山贼作乱！");
+            if (!processQuestThroughAction("hearNews")) {
+                addLog("酒客：听说郊外最近山贼作乱！");
+            }
             break;
         case "trainAtk":
             if (!char) break;
@@ -1355,4 +1463,208 @@ window.onload = function () {
             dateEl.innerText = formatDate();
         }
     }, 1000);
+}
+// ========== 任务系统 ==========
+function openQuestModal() {
+    const modal = document.getElementById("quest-modal");
+    if (modal) modal.style.display = "flex";
+    renderQuestList();
+}
+
+function closeQuestModal() {
+    const modal = document.getElementById("quest-modal");
+    if (modal) modal.style.display = "none";
+}
+
+function switchQuestTab(tab) {
+    const mainTab = document.getElementById("quest-tab-main");
+    const sideTab = document.getElementById("quest-tab-side");
+    const mainList = document.getElementById("quest-main-list");
+    const sideList = document.getElementById("quest-side-list");
+    if (tab === "main") {
+        if (mainTab) mainTab.classList.add("active");
+        if (sideTab) sideTab.classList.remove("active");
+        if (mainList) mainList.style.display = "";
+        if (sideList) sideList.style.display = "none";
+    } else {
+        if (sideTab) sideTab.classList.add("active");
+        if (mainTab) mainTab.classList.remove("active");
+        if (sideList) sideList.style.display = "";
+        if (mainList) mainList.style.display = "none";
+    }
+    renderQuestList();
+}
+
+function renderQuestList() {
+    const char = gameData.character;
+    const mainList = document.getElementById("quest-main-list");
+    const sideList = document.getElementById("quest-side-list");
+    if (!mainList) return;
+
+    let html = "";
+    const mainListDef = gameData.questDefs.mainList;
+
+    mainListDef.forEach(main => {
+        if (main.maxStage === 0) {
+            html += `<div class="quest-locked">【${main.name}】尚未开放</div>`;
+            return;
+        }
+        const isCompleted = gameData.quests.completedMains.includes(main.id);
+        const sDiao = gameData.questDefs.sDiao;
+
+        if (isCompleted) {
+            html += `<div class="quest-completed">✅ 【${main.name}】已完成</div>`;
+            return;
+        }
+
+        const currentStageIdx = gameData.quests.currentMain;
+        const currentStage = sDiao.find(s => s.stage === currentStageIdx + 1);
+
+        if (currentStage && currentStage.stage <= main.maxStage) {
+            const isDone = currentStage.isDone(gameData);
+            const prog = currentStage.progress(gameData);
+
+            html += `<div class="quest-item">`;
+            html += `<div class="quest-title">【${main.name}】第${currentStage.stage}节 · ${currentStage.title}</div>`;
+            html += `<div class="quest-desc">${currentStage.desc}</div>`;
+            html += `<div class="quest-target">目标：${currentStage.target}</div>`;
+            html += `<div class="quest-progress-bar"><div class="quest-progress-fill" style="width:${prog.current / prog.total * 100}%"></div></div>`;
+            if (!isDone) {
+                html += `<div class="quest-hint">前往【酒馆】打听消息推进剧情</div>`;
+            } else {
+                html += `<div class="quest-reward">奖励：${currentStage.reward}</div>`;
+            }
+            html += `</div>`;
+        } else {
+            html += `<div class="quest-item">`;
+            html += `<div class="quest-title">【${main.name}】${main.maxStage}节全完成</div>`;
+            html += `</div>`;
+        }
+    });
+
+    mainList.innerHTML = html;
+
+    if (sideList) {
+        sideList.innerHTML = `<div style="color:#888;text-align:center;padding:20px;">暂无支线任务</div>`;
+    }
+}
+
+function advanceMainStage() {
+    const q = gameData.quests;
+    const nextStage = q.currentMain + 1;
+    const sDiao = gameData.questDefs.sDiao;
+    const stage = sDiao.find(s => s.stage === nextStage);
+
+    if (!stage) return;
+
+    q.currentMain = nextStage;
+
+    const stageKey = "stage" + nextStage + "Done";
+    q[stageKey] = true;
+
+    const stageReadyKey = "stage" + (nextStage + 1) + "Ready";
+    q[stageReadyKey] = true;
+
+    const char = gameData.character;
+
+    addLogSeparator(`主线推进：${stage.title}`);
+    addLog(`📖 ${stage.desc}`, "event");
+    addLog(`🎯 目标：${stage.target}`, "event");
+    addLog(`🎁 奖励：${stage.reward}`, "event");
+
+    switch (nextStage) {
+        case 1:
+            addLog("郭靖告诉你，杨过的消息。主线【神雕侠侣】开启！", "system");
+            addLog("提示：前往【酒馆】找郭靖对话。");
+            break;
+        case 2:
+            char.maxMp += 10;
+            char.mp += 10;
+            addLog("你获得了全真教内功心法，最大内力+10！", "system");
+            break;
+        case 3:
+            char.attack += 1;
+            addLog("你为杨过主持公道，侠义值提升，攻击+1！", "system");
+            break;
+        case 4:
+            addLog("你获得了古墓派轻功，闪避能力提升！", "system");
+            break;
+        case 5:
+            addLog("你击败了甄志丙！获得经验×200，银两×300！", "system");
+            addExp(200);
+            char.money += 300;
+            break;
+        case 6:
+            char.maxMp += 20;
+            char.mp += 20;
+            addLog("你在绝情谷获得寒玉床经验，最大内力+20！", "system");
+            break;
+        case 7:
+            char.attack += 3;
+            addLog("杨过传授你黯然销魂掌，攻击+3！", "system");
+            break;
+        case 8:
+            char.attack += 5;
+            char.defense += 5;
+            char.maxHp += 50;
+            char.hp += 50;
+            addLog("🎉 恭喜！你完成了【神雕侠侣】主线！全属性+5，气血+50！", "system");
+            q.completedMains.push(1);
+            break;
+    }
+    saveGame();
+    updateStatusBar();
+    renderQuestList();
+}
+
+function checkQuestTrigger(sceneName) {
+    const q = gameData.quests;
+    if (!gameData.character) return;
+
+    if (sceneName === "tavern") {
+        if (q.currentMain === 0 && gameData.character.level >= 3) {
+            addLog("🔔 你在酒馆中发现了郭靖，他似乎在等你……", "system");
+            addLog("（点击【打听江湖消息】推进主线剧情）", "system");
+        }
+
+        if (q.currentMain === 1 && !q.stage2Done) {
+            addLog("🔔 郭靖带你前往终南山，你看到了丘处机道长……", "system");
+            addLog("（点击【打听江湖消息】推进剧情）", "system");
+        }
+        if (q.currentMain === 2 && !q.stage3Done) {
+            addLog("🔔 你在酒馆遇到了满脸悲愤的杨过……", "system");
+            addLog("（点击【打听江湖消息】推进剧情）", "system");
+        }
+        if (q.currentMain === 5 && !q.stage6Done) {
+            addLog("🔔 公孙绿萼在酒馆等你，她告诉你小龙女的消息……", "system");
+        }
+        if (q.currentMain === 6 && !q.stage7Done) {
+            addLog("🔔 江湖传言襄阳大战将起，神雕侠侣的故事即将推进……", "system");
+        }
+        if (q.currentMain === 7 && !q.stage8Ready) {
+            addLog("🔔 16年后的重逢时刻已到，蒙哥大汗正率军攻向襄阳……", "system");
+        }
+    }
+}
+
+function processQuestThroughAction(actionName) {
+    const q = gameData.quests;
+    if (!gameData.character) return false;
+    const char = gameData.character;
+
+    if (actionName === "hearNews") {
+        const levelReq = [0, 3, 5, 8, 12, 16, 20, 25, 30];
+        const nextStage = q.currentMain + 1;
+        if (nextStage > 8) return false;
+
+        const reqLevel = levelReq[nextStage] || 99;
+        if (char.level < reqLevel) {
+            return false;
+        }
+
+        advanceMainStage();
+        return true;
+    }
+
+    return false;
 }

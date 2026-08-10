@@ -33,6 +33,7 @@
                         <div class="dropdown-menu" id="top-menu">
                             <div class="dropdown-item" onclick="openBagModal();closeMenu();">物品</div>
                             <div class="dropdown-item" onclick="openAudioModal();closeMenu();">音效/音乐</div>
+                            <div class="dropdown-item" onclick="openQuestModal();closeMenu();">任务</div>
                             <div class="dropdown-divider"></div>
                             <div class="dropdown-item" onclick="saveGame();closeMenu();">存档</div>
                             <div class="dropdown-item" onclick="loadGame();closeMenu();">读档</div>
@@ -165,7 +166,21 @@
             </div>
         </div>
     </div>
-
+    <!-- 任务弹窗 -->
+    <div class="modal" id="quest-modal">
+        <div class="modal-content">
+            <div class="modal-title">江湖任务</div>
+            <div class="quest-tabs">
+                <div class="quest-tab active" id="quest-tab-main" onclick="switchQuestTab('main')">主线任务</div>
+                <div class="quest-tab" id="quest-tab-side" onclick="switchQuestTab('side')">支线任务</div>
+            </div>
+            <div class="quest-list" id="quest-main-list"></div>
+            <div class="quest-list" id="quest-side-list" style="display:none;"></div>
+            <div style="text-align:center;margin-top:15px;">
+                <button class="btn btn-cancel" onclick="closeQuestModal()">关闭</button>
+            </div>
+        </div>
+    </div>
     <!-- 战斗弹窗 -->
     <div class="modal" id="fight-modal">
         <div class="modal-content">
