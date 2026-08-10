@@ -14,15 +14,16 @@
     <div class="container">
         <h1>金庸群侠传</h1>
 
-        <!-- 音量控制 + 背景音乐 -->
+        <!-- 音效控制 -->
         <div class="sound-control">
-            <button id="toggle-sound" onclick="toggleSound()">🔊 音效开</button>
+            <span>音效：</span>
+            <button id="btn-sound" onclick="toggleSound()">🔊 开</button>
             <span>音量：</span>
             <input type="range" id="volume" min="0" max="100" value="70" oninput="setVolume(this.value)">
-            <hr style="width:1px;height:20px;border:none;border-left:1px solid #ccc;margin:0 5px;">
+            <span>BGM：</span>
+            <button id="btn-bgm" onclick="toggleBgm()">🎵 开</button>
+            <button onclick="document.getElementById('bgm-file').click()">📁选曲</button>
             <input type="file" id="bgm-file" accept="audio/*" style="display:none" onchange="loadBgmFile(event)">
-            <button id="bgm-btn" onclick="document.getElementById('bgm-file').click()">🎵 选曲</button>
-            <button id="bgm-play" onclick="toggleBgm()">▶ 播放</button>
             <span id="bgm-name" style="font-size:0.85rem;color:#666;"></span>
         </div>
 

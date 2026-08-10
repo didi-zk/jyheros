@@ -13,6 +13,7 @@ const gameData = {
                 { text: "前往武馆", next: "wuguan" },
                 { text: "逛逛杂货铺", next: "shop" },
                 { text: "出城闯荡", next: "wild" },
+                { text: "比武招亲", next: "duel" },
                 { text: "查看背包", action: "showBag" },
                 { text: "保存游戏", action: "saveGame" }
             ]
@@ -21,7 +22,8 @@ const gameData = {
             title: "酒馆",
             desc: "酒馆内人声鼎沸，酒客高谈阔论江湖轶事。小二过来招呼你。",
             options: [
-                { text: "喝酒恢复气血", action: "drink" },
+                { text: "喝酒恢复气血(10银两)", action: "drink" },
+                { text: "静坐调息恢复内力(15银两)", action: "restMp" },
                 { text: "打听江湖消息", action: "hearNews" },
                 { text: "返回城门", next: "start" }
             ]
@@ -49,7 +51,33 @@ const gameData = {
             desc: "城外荒草漫漫，远处树林阴影重重，似乎有危险潜伏。",
             options: [
                 { text: "继续深入，寻找敌人", action: "meetEnemy" },
+                { text: "探索山洞", next: "cave" },
                 { text: "退回襄阳城门", next: "start" }
+            ]
+        },
+        cave: {
+            title: "深山洞穴",
+            desc: "你发现了一个隐秘的山洞，洞内昏暗潮湿，远处似乎有微光闪烁。",
+            options: [
+                { text: "进入洞穴探索", action: "exploreCave" },
+                { text: "转身离开", next: "wild" }
+            ]
+        },
+        duel: {
+            title: "比武招亲",
+            desc: "城门口挂着彩带，一位官家小姐正在比武招亲。擂台旁围满了人。",
+            options: [
+                { text: "上台比试(需等级≥2)", action: "joinDuel" },
+                { text: "围观一下", action: "watchDuel" },
+                { text: "回到城门", next: "start" }
+            ]
+        },
+        encounter: {
+            title: "偶遇陆小凤",
+            desc: "一位身穿红衣、留着两撇小胡子的男子向你走来，他似乎遇到了麻烦。",
+            options: [
+                { text: "拔刀相助", action: "helpLu" },
+                { text: "婉言谢绝", action: "refuseLu" }
             ]
         }
     },
@@ -81,7 +109,10 @@ const gameData = {
     ],
     enemyList: [
         { name: "山贼", hp: 60, maxHp: 60, attack: 8, defense: 2, money: 30, exp: 20 },
-        { name: "盗匪", hp: 80, maxHp: 80, attack: 11, defense: 3, money: 50, exp: 35 }
+        { name: "盗匪", hp: 80, maxHp: 80, attack: 11, defense: 3, money: 50, exp: 35 },
+        { name: "黑衣人", hp: 110, maxHp: 110, attack: 14, defense: 4, money: 80, exp: 55 },
+        { name: "赏金杀手", hp: 140, maxHp: 140, attack: 17, defense: 5, money: 120, exp: 80 },
+        { name: "武林盟主", hp: 200, maxHp: 200, attack: 22, defense: 8, money: 200, exp: 150 }
     ]
 };
 
@@ -93,34 +124,45 @@ const optionsListEl = document.getElementById("options-list");
 const logBoxEl = document.getElementById("log-area");
 
 // ========== 音效控制 ==========
-let soundEnabled = true;
-let globalVolume = 0.7; // 0.0 - 1.0
+let soundEnabled = true;   // 游戏音效开关
+let globalVolume = 0.7;    // 音量 0.0 - 1.0
+let bgmAudio = null;       // 背景音乐Audio对象
 
+// 播放游戏音效（click/hurt/gain等）
 function playSound(filename) {
     if (!soundEnabled) return;
     try {
-        let audio = new Audio(`./sounds/${filename}.mp3`);
-        audio.volume = globalVolume;
-        audio.play().catch(e => { });
+        const a = new Audio(`./sounds/${filename}.mp3`);
+        a.volume = globalVolume;
+        const p = a.play();
+        if (p && p.catch) p.catch(function () { });
     } catch (err) { }
 }
+
+// 音效开关：控制游戏音效的开/关
 function toggleSound() {
     soundEnabled = !soundEnabled;
-    const btn = document.getElementById('toggle-sound');
-    if (btn) btn.innerText = soundEnabled ? '🔊 音效开' : '🔈 音效关';
-}
-function setVolume(val) {
-    // val 预计 0-100
-    const v = Number(val) / 100;
-    if (isNaN(v)) return;
-    globalVolume = Math.max(0, Math.min(1, v));
-    if (bgmAudio) bgmAudio.volume = globalVolume * 0.5;
+    const btn = document.getElementById('btn-sound');
+    if (btn) btn.innerText = soundEnabled ? '🔊 开' : '🔈 关';
 }
 
-// ========== 背景音乐系统 ==========
-let bgmAudio = null;
-let bgmPlaying = false;
+// BGM开关：单按钮控制BGM播放/暂停
+function toggleBgm() {
+    if (!bgmAudio) {
+        addLog('背景音乐未加载，请先选曲。');
+        return;
+    }
+    const btn = document.getElementById('btn-bgm');
+    if (bgmAudio.paused) {
+        bgmAudio.play().catch(function () { });
+        if (btn) btn.innerText = '🎵 开';
+    } else {
+        bgmAudio.pause();
+        if (btn) btn.innerText = '🎵 关';
+    }
+}
 
+// 选择本地mp3文件作为BGM
 function loadBgmFile(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -128,30 +170,15 @@ function loadBgmFile(event) {
         bgmAudio.pause();
         bgmAudio = null;
     }
-    const url = URL.createObjectURL(file);
-    bgmAudio = new Audio(url);
+    bgmAudio = new Audio(URL.createObjectURL(file));
     bgmAudio.volume = globalVolume * 0.5;
     bgmAudio.loop = true;
     const nameEl = document.getElementById('bgm-name');
     if (nameEl) nameEl.innerText = file.name;
-    toggleBgm(true);
-}
-
-function toggleBgm(forcePlay) {
-    if (!bgmAudio) {
-        addLog('请先选择一首背景音乐！');
-        return;
-    }
-    const btn = document.getElementById('bgm-play');
-    if (forcePlay || !bgmPlaying) {
-        bgmAudio.play().catch(e => { });
-        bgmPlaying = true;
-        if (btn) btn.innerText = '⏸ 暂停';
-    } else {
-        bgmAudio.pause();
-        bgmPlaying = false;
-        if (btn) btn.innerText = '▶ 播放';
-    }
+    // 选曲后自动播放
+    bgmAudio.play().catch(function () { });
+    const btn = document.getElementById('btn-bgm');
+    if (btn) btn.innerText = '🎵 开';
 }
 // ========== 日志输出 ==========
 function addLog(text, type = "normal") {
@@ -243,14 +270,37 @@ function runAction(actionName) {
             addLog("系统：游戏已手动保存！", "system");
             break;
         case "drink":
-            if (char && char.money >= 10) {
-                char.money -= 10;
-                char.hp = Math.min(char.maxHp, char.hp + 35);
-                addLog(`你喝下美酒，气血恢复35点。`);
-                playSound("heal");
-            } else {
-                addLog("银两不足！");
+            if (!char) break;
+            if (char.hp >= char.maxHp) {
+                addLog("你气血充沛，无需喝酒。");
+                break;
             }
+            if (char.money < 10) {
+                addLog("银两不足！需要10银两。");
+                break;
+            }
+            char.money -= 10;
+            const hpRestore = Math.min(35, char.maxHp - char.hp);
+            char.hp += hpRestore;
+            addLog(`你喝下美酒，气血恢复${hpRestore}点。`);
+            playSound("heal");
+            renderScene();
+            break;
+        case "restMp":
+            if (!char) break;
+            if (char.mp >= char.maxMp) {
+                addLog("你内力充沛，无需调息。");
+                break;
+            }
+            if (char.money < 15) {
+                addLog("银两不足！需要15银两。");
+                break;
+            }
+            char.money -= 15;
+            const mpRestore = Math.min(25, char.maxMp - char.mp);
+            char.mp += mpRestore;
+            addLog(`你静坐调息，内力恢复${mpRestore}点。`);
+            playSound("heal");
             renderScene();
             break;
         case "hearNews":
@@ -277,10 +327,175 @@ function runAction(actionName) {
             buyShopItem("def");
             break;
         case "meetEnemy":
-            startBattle();
+            triggerRandomEvent();
+            break;
+        case "exploreCave":
+            exploreCave();
+            break;
+        case "joinDuel":
+            joinDuel();
+            break;
+        case "watchDuel":
+            watchDuel();
+            break;
+        case "helpLu":
+            helpLu();
+            break;
+        case "refuseLu":
+            refuseLu();
             break;
     }
     updateStatusBar();
+}
+// ========== 剧情事件 ==========
+function exploreCave() {
+    const char = gameData.character;
+    if (!char) return;
+    const roll = Math.random();
+    if (roll < 0.4) {
+        const bonus = 20 + Math.floor(Math.random() * 30);
+        char.money += bonus;
+        addLog(`你在洞穴深处发现了一个古老的宝箱，获得${bonus}银两！`);
+        playSound("gain");
+    } else if (roll < 0.7) {
+        const hpLoss = 10 + Math.floor(Math.random() * 15);
+        char.hp = Math.max(1, char.hp - hpLoss);
+        addLog(`洞穴中窜出一群蝙蝠，你受到${hpLoss}点伤害！`);
+        playSound("hurt");
+    } else if (roll < 0.85) {
+        const expGain = 25 + Math.floor(Math.random() * 35);
+        addLog(`你发现石壁上刻着高深武学心法，领悟了${expGain}点经验！`);
+        addExp(expGain);
+    } else {
+        addLog("洞穴空空如也，你白跑一趟。");
+    }
+    saveGame();
+    updateStatusBar();
+    renderScene();
+}
+
+function joinDuel() {
+    const char = gameData.character;
+    if (!char) return;
+    if (char.level < 2) {
+        addLog("你功力尚浅，擂台旁的高手摇了摇头，建议你先升到2级再来。");
+        renderScene();
+        return;
+    }
+    addLog("你跳上擂台，与小姐的护卫交手！");
+    setTimeout(() => {
+        const winRate = 0.4 + (char.level - 2) * 0.1 + char.attack * 0.01;
+        if (Math.random() < winRate) {
+            const reward = 50 + char.level * 20;
+            char.money += reward;
+            addLog(`🎉 你大胜而归！官家小姐赠予你${reward}银两作为谢礼！`);
+            playSound("gain");
+            addExp(30);
+        } else {
+            const dmg = 15 + Math.floor(Math.random() * 20);
+            char.hp = Math.max(1, char.hp - dmg);
+            addLog(`你被护卫击飞，受了${dmg}点伤害，狼狈下台。`);
+            playSound("hurt");
+        }
+        saveGame();
+        updateStatusBar();
+        renderScene();
+    }, 1000);
+}
+
+function watchDuel() {
+    addLog("你围观了一会儿，发现护卫身手不凡，暗自决定以后再来挑战。");
+    renderScene();
+}
+
+function helpLu() {
+    const char = gameData.character;
+    if (!char) return;
+    addLog("你挺身而出，与陆小凤一起对抗强敌！");
+    setTimeout(() => {
+        addLog("一场恶战后，你们击退了敌人。陆小凤感激地递给你一瓶金疮药。");
+        const existing = char.items.find(i => i.name === "金疮药");
+        if (existing) { existing.count += 2; }
+        else { char.items.push({ name: "金疮药", desc: "恢复40气血", type: "hp", value: 40, count: 2 }); }
+        addLog("你获得了2瓶金疮药和50点经验！");
+        addExp(50);
+        saveGame();
+        updateStatusBar();
+        renderScene();
+    }, 1000);
+}
+
+function refuseLu() {
+    addLog("你婉言谢绝了陆小凤，他笑笑说后会有期，转身离去。");
+    renderScene();
+}
+
+// ========== 随机事件系统 ==========
+function triggerRandomEvent() {
+    const char = gameData.character;
+    if (!char) return;
+    const roll = Math.random();
+
+    if (roll < 0.50) {
+        // 50% 概率：遭遇战斗
+        startBattle();
+
+    } else if (roll < 0.65) {
+        // 15% 概率：发现宝箱
+        const reward = 20 + Math.floor(Math.random() * 40);
+        char.money += reward;
+        addLog(`你在草丛中发现一个宝箱，获得${reward}银两！`);
+        playSound("gain");
+        saveGame();
+        updateStatusBar();
+
+    } else if (roll < 0.75) {
+        // 10% 概率：遇到陷阱
+        const dmg = 8 + Math.floor(Math.random() * 12);
+        char.hp = Math.max(1, char.hp - dmg);
+        addLog(`你踩中了一个陷阱，损失${dmg}点气血！`);
+        playSound("hurt");
+        updateStatusBar();
+        if (char.hp <= 0) {
+            addLog("💀你伤重不治，游戏结束！");
+            gameData.character = null;
+            try { localStorage.removeItem("jinyong-game-data"); } catch (e) { }
+        }
+
+    } else if (roll < 0.88) {
+        // 13% 概率：遇到江湖高人
+        const gain = 15 + Math.floor(Math.random() * 25);
+        addLog(`一位隐居高人向你指点，获得${gain}点经验！`);
+        addExp(gain);
+
+    } else if (roll < 0.95) {
+        // 7% 概率：遇到独行商人
+        addLog("你遇到一位独行商人，他以优惠价卖你金疮药(15银两)。");
+        addLog("（商人匆匆离去，错过了就没了！）");
+        if (char.money >= 15) {
+            const existing = char.items.find(i => i.name === "金疮药");
+            if (existing) { existing.count++; }
+            else { char.items.push({ name: "金疮药", desc: "恢复40气血", type: "hp", value: 40, count: 1 }); }
+            char.money -= 15;
+            addLog("你买下了一瓶金疮药。");
+            playSound("gain");
+            saveGame();
+            updateStatusBar();
+        } else {
+            addLog("银两不足，商人摇头离去。");
+        }
+
+    } else if (roll < 0.98) {
+        // 3% 概率：偶遇陆小凤
+        gameData.currentScene = "encounter";
+        renderScene();
+        return;
+
+    } else {
+        // 2% 概率：风平浪静
+        addLog("郊外一片寂静，你漫步片刻，什么也没发生。");
+    }
+    renderScene();
 }
 // ========== 商店购买 ==========
 function buyShopItem(type) {
@@ -291,6 +506,11 @@ function buyShopItem(type) {
         addLog("商店里没有这种东西！");
         return;
     }
+    // 铁布衫特殊检查：只能买一次
+    if (type === "def" && char.boughtIronCloth) {
+        addLog("你已经练过铁布衫，无需再买！");
+        return;
+    }
     if (char.money < item.price) {
         addLog(`银两不足！【${item.name}】需要${item.price}银两。`);
         return;
@@ -298,6 +518,7 @@ function buyShopItem(type) {
     char.money -= item.price;
     if (type === "def") {
         char.defense += item.value;
+        char.boughtIronCloth = true;
         addLog(`你购买了【${item.name}】，防御永久+${item.value}！`);
     } else {
         const existing = char.items.find(i => i.name === item.name);
@@ -638,7 +859,6 @@ function useItemInFight() {
     char.items = char.items.filter(it => it.count > 0);
     updateFightInfo();
     updateStatusBar();
-    enemyTurn();
 }
 
 function fleeFight() {
@@ -679,12 +899,10 @@ function loadGame() {
 window.onload = function () {
     loadGame();
     renderScene();
-    // 兼容：index.html 可能没有 confirm-create-btn，先做安全检查再绑定
-    const confirmBtn = document.getElementById("confirm-create-btn");
-    if (confirmBtn) confirmBtn.onclick = createCharacter;
-    // 绑定音量控件（如果存在)
-    const vol = document.getElementById("volume");
-    if (vol) vol.addEventListener('input', (e) => setVolume(e.target.value));
-    const toggleBtn = document.getElementById("toggle-sound");
-    if (toggleBtn) toggleBtn.addEventListener('click', toggleSound);
+    // 加载默认背景音乐（默认暂停，用户点BGM开关后播放）
+    try {
+        bgmAudio = new Audio('./sounds/bgm.mp3');
+        bgmAudio.volume = globalVolume * 0.5;
+        bgmAudio.loop = true;
+    } catch (e) { }
 }
