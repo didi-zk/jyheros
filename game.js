@@ -11,7 +11,7 @@ const gameData = {
             options: [
                 { text: "进入酒馆", next: "tavern" },
                 { text: "前往武馆", next: "wuguan" },
-                { text: "逛逛杂货铺", next: "shop" },
+                { text: "杂货铺", next: "shop" },
                 { text: "出城闯荡", next: "wild" },
                 { text: "比武招亲", next: "duel" },
                 { text: "查看背包", action: "showBag" },
@@ -103,13 +103,13 @@ const gameData = {
     shopItems: [
         { name: "金疮药", desc: "恢复40气血", type: "hp", value: 40, price: 20, maxLimit: 0 },
         { name: "清水", desc: "恢复20内力", type: "mp", value: 20, price: 15, maxLimit: 0 },
-        { name: "大还丹", desc: "恢复80气血", type: "hp", value: 80, price: 50, maxLimit: 0 },
-        { name: "内力丹", desc: "恢复50内力", type: "mp", value: 50, price: 40, maxLimit: 0 },
-        { name: "铁布衫", desc: "永久增加3点防御", type: "def", value: 3, price: 50, maxLimit: 1 },
-        { name: "攻击秘籍", desc: "永久增加2点攻击", type: "atk", value: 2, price: 150, maxLimit: 3 },
-        { name: "内力心法", desc: "永久增加20最大内力", type: "maxmp", value: 20, price: 120, maxLimit: 3 },
-        { name: "强身健体", desc: "永久增加30最大气血", type: "maxhp", value: 30, price: 120, maxLimit: 3 },
-        { name: "雪莲", desc: "战斗中使用，恢复150气血", type: "hp", value: 150, price: 100, maxLimit: 5 }
+        { name: "大还丹", desc: "恢复80气血(战斗中使用)", type: "hp", value: 80, price: 60, maxLimit: 0 },
+        { name: "内力丹", desc: "恢复50内力(战斗中使用)", type: "mp", value: 50, price: 40, maxLimit: 0 },
+        { name: "雪莲", desc: "恢复200气血(战斗中使用)", type: "hp", value: 200, price: 120, maxLimit: 5 },
+        { name: "铁布衫", desc: "永久增加3点防御", type: "def", value: 3, price: 60, maxLimit: 1 },
+        { name: "攻击秘籍", desc: "永久增加2点攻击", type: "atk", value: 2, price: 180, maxLimit: 3 },
+        { name: "内力心法", desc: "永久增加20最大内力", type: "maxmp", value: 20, price: 150, maxLimit: 3 },
+        { name: "强身健体", desc: "永久增加30最大气血", type: "maxhp", value: 30, price: 150, maxLimit: 3 }
     ],
     enemyList: [
         { name: "山贼", hp: 60, maxHp: 60, attack: 8, defense: 2, money: 30, exp: 20 },
@@ -896,8 +896,17 @@ function openBagModal() {
     if (!c || c.items.length === 0) html += "<div>空空如也</div>";
     else {
         c.items.forEach((it, idx) => {
-            html += `<div class="bag-item">${idx + 1}. ${it.name} - ${it.desc}（x${it.count ?? 1}）`;
-            html += ` <button class="btn-small" onclick="useItemByIndex(${idx});closeBagModal()">使用</button>`;
+            const max = it.count ?? 1;
+            html += `<div class="bag-item" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">`;
+            html += `<span>${idx + 1}. ${it.name} - ${it.desc}（x${max}）</span>`;
+            if (max > 1) {
+                html += `<span style="display:flex;align-items:center;gap:4px;">`;
+                html += `<button class="btn-small" onclick="bagUseMinus(${idx})">-</button>`;
+                html += `<span id="bag_qty_${idx}" style="min-width:20px;text-align:center;font-weight:bold;">1</span>`;
+                html += `<button class="btn-small" onclick="bagUsePlus(${idx},${max})">+</button>`;
+                html += `</span>`;
+            }
+            html += `<button class="btn-small" onclick="useItemByIndex(${idx}, document.getElementById('bag_qty_${idx}') ? parseInt(document.getElementById('bag_qty_${idx}').textContent) : 1);closeBagModal()">使用</button>`;
             html += `</div>`;
         })
     }
@@ -911,6 +920,18 @@ function openBagModal() {
 function closeBagModal() {
     const modal = document.getElementById("bag-modal");
     if (modal) modal.style.display = "none";
+}
+function bagUseMinus(idx) {
+    const el = document.getElementById("bag_qty_" + idx);
+    if (el && parseInt(el.textContent) > 1) {
+        el.textContent = parseInt(el.textContent) - 1;
+    }
+}
+function bagUsePlus(idx, max) {
+    const el = document.getElementById("bag_qty_" + idx);
+    if (el && parseInt(el.textContent) < max) {
+        el.textContent = parseInt(el.textContent) + 1;
+    }
 }
 function showBag() {
     const c = gameData.character;
@@ -1060,11 +1081,32 @@ function useItemInFight() {
     let html = '<div style="margin-bottom:10px;">选择要使用的物品：</div>';
     char.items.forEach((it, idx) => {
         if (it.count > 0) {
-            html += `<button class="btn" onclick="useItemByIndex(${idx})">${it.name} x${it.count}</button>`;
+            html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">`;
+            html += `<span>${it.name} x${it.count}</span>`;
+            html += `<span style="display:flex;align-items:center;gap:4px;">`;
+            html += `<button class="btn-small" onclick="fightItemMinus('${idx}')">-</button>`;
+            html += `<span id="fight_qty_${idx}" style="min-width:20px;text-align:center;font-weight:bold;">1</span>`;
+            html += `<button class="btn-small" onclick="fightItemPlus('${idx}',${it.count})">+</button>`;
+            html += `</span>`;
+            html += `<button class="btn-small" onclick="useItemByIndex(${idx}, parseInt(document.getElementById('fight_qty_${idx}').textContent))">使用</button>`;
+            html += `</div>`;
         }
     });
     html += '<button class="btn btn-cancel" onclick="restoreFightOptions()">取消</button>';
     fightOptions.innerHTML = html;
+}
+
+function fightItemMinus(idx) {
+    const el = document.getElementById("fight_qty_" + idx);
+    if (el && parseInt(el.textContent) > 1) {
+        el.textContent = parseInt(el.textContent) - 1;
+    }
+}
+function fightItemPlus(idx, max) {
+    const el = document.getElementById("fight_qty_" + idx);
+    if (el && parseInt(el.textContent) < max) {
+        el.textContent = parseInt(el.textContent) + 1;
+    }
 }
 
 function restoreFightOptions() {
@@ -1078,11 +1120,13 @@ function restoreFightOptions() {
     `;
 }
 
-function useItemByIndex(idx) {
+function useItemByIndex(idx, useCount) {
     const char = gameData.character;
     if (!char || !char.items[idx]) return;
     const it = char.items[idx];
     if (it.count <= 0) return;
+    if (!useCount || useCount < 1) useCount = 1;
+    if (useCount > it.count) useCount = it.count;
 
     if (gameData.inBattle) {
         if (it.type === "hp" && char.hp >= char.maxHp) {
@@ -1096,14 +1140,16 @@ function useItemByIndex(idx) {
             return;
         }
         if (it.type === "hp") {
-            char.hp = Math.min(char.maxHp, char.hp + it.value);
-            addLog(`你使用了【${it.name}】，恢复${it.value}点气血！`);
+            const totalRestore = Math.min(it.value * useCount, char.maxHp - char.hp);
+            char.hp += totalRestore;
+            addLog(`你使用了【${it.name}】×${useCount}，恢复${totalRestore}点气血！`);
         } else if (it.type === "mp") {
-            char.mp = Math.min(char.maxMp, char.mp + it.value);
-            addLog(`你使用了【${it.name}】，恢复${it.value}点内力！`);
+            const totalRestore = Math.min(it.value * useCount, char.maxMp - char.mp);
+            char.mp += totalRestore;
+            addLog(`你使用了【${it.name}】×${useCount}，恢复${totalRestore}点内力！`);
         }
         playSound("heal");
-        it.count--;
+        it.count -= useCount;
         char.items = char.items.filter(i => i.count > 0);
         updateFightInfo();
         updateStatusBar();
@@ -1119,16 +1165,16 @@ function useItemByIndex(idx) {
             return;
         }
         if (it.type === "hp") {
-            const restore = Math.min(it.value, char.maxHp - char.hp);
-            char.hp += restore;
-            addLog(`你使用了【${it.name}】，恢复${restore}点气血！`);
+            const totalRestore = Math.min(it.value * useCount, char.maxHp - char.hp);
+            char.hp += totalRestore;
+            addLog(`你使用了【${it.name}】×${useCount}，恢复${totalRestore}点气血！`);
         } else if (it.type === "mp") {
-            const restore = Math.min(it.value, char.maxMp - char.mp);
-            char.mp += restore;
-            addLog(`你使用了【${it.name}】，恢复${restore}点内力！`);
+            const totalRestore = Math.min(it.value * useCount, char.maxMp - char.mp);
+            char.mp += totalRestore;
+            addLog(`你使用了【${it.name}】×${useCount}，恢复${totalRestore}点内力！`);
         }
         playSound("heal");
-        it.count--;
+        it.count -= useCount;
         char.items = char.items.filter(i => i.count > 0);
         updateStatusBar();
         saveGame();
