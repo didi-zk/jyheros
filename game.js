@@ -642,6 +642,7 @@ function helpLu() {
         else { char.items.push({ name: "金疮药", desc: "恢复40气血", type: "hp", value: 40, count: 2 }); }
         addLog("你获得了2瓶金疮药和50点经验！");
         addExp(50);
+        gameData.currentScene = "wild";
         saveGame();
         updateStatusBar();
         renderScene();
@@ -849,23 +850,23 @@ function shopBuy(key, idx) {
     char.money -= totalPrice;
 
     if (item.type === "def") {
-        char.defense += item.value;
+        char.defense += item.value * qty;
         char.boughtIronCloth = true;
-        addLog(`你购买了【${item.name}】，防御永久+${item.value}！`, "event");
+        addLog(`你购买了【${item.name}】×${qty}，防御永久+${item.value * qty}！`, "event");
     } else if (item.type === "atk") {
-        char.attack += item.value;
-        char.boughtAtk = (char.boughtAtk || 0) + 1;
-        addLog(`你修炼了【${item.name}】，攻击永久+${item.value}！`, "event");
+        char.attack += item.value * qty;
+        char.boughtAtk = (char.boughtAtk || 0) + qty;
+        addLog(`你修炼了【${item.name}】×${qty}，攻击永久+${item.value * qty}！`, "event");
     } else if (item.type === "maxmp") {
-        char.maxMp += item.value;
-        char.mp += item.value;
-        char.boughtMaxMp = (char.boughtMaxMp || 0) + 1;
-        addLog(`你修炼了【${item.name}】，最大内力永久+${item.value}！`, "event");
+        char.maxMp += item.value * qty;
+        char.mp += item.value * qty;
+        char.boughtMaxMp = (char.boughtMaxMp || 0) + qty;
+        addLog(`你修炼了【${item.name}】×${qty}，最大内力永久+${item.value * qty}！`, "event");
     } else if (item.type === "maxhp") {
-        char.maxHp += item.value;
-        char.hp += item.value;
-        char.boughtMaxHp = (char.boughtMaxHp || 0) + 1;
-        addLog(`你修炼了【${item.name}】，最大气血永久+${item.value}！`, "event");
+        char.maxHp += item.value * qty;
+        char.hp += item.value * qty;
+        char.boughtMaxHp = (char.boughtMaxHp || 0) + qty;
+        addLog(`你修炼了【${item.name}】×${qty}，最大气血永久+${item.value * qty}！`, "event");
     } else {
         const existing = char.items.find(i => i.name === item.name);
         if (existing) {
@@ -1327,17 +1328,22 @@ function useItemByIndex(idx, useCount) {
             return;
         }
         if (it.type === "hp") {
-            const totalRestore = Math.min(it.value * useCount, char.maxHp - char.hp);
+            const missing = char.maxHp - char.hp;
+            const actualUsed = Math.min(useCount, Math.ceil(missing / it.value));
+            const totalRestore = Math.min(it.value * actualUsed, missing);
             char.hp += totalRestore;
-            addLog(`你使用了【${it.name}】×${useCount}，恢复${totalRestore}点气血！`);
+            addLog(`你使用了【${it.name}】×${actualUsed}，恢复${totalRestore}点气血！`);
+            it.count -= actualUsed;
         } else if (it.type === "mp") {
-            const totalRestore = Math.min(it.value * useCount, char.maxMp - char.mp);
+            const missing = char.maxMp - char.mp;
+            const actualUsed = Math.min(useCount, Math.ceil(missing / it.value));
+            const totalRestore = Math.min(it.value * actualUsed, missing);
             char.mp += totalRestore;
-            addLog(`你使用了【${it.name}】×${useCount}，恢复${totalRestore}点内力！`);
+            addLog(`你使用了【${it.name}】×${actualUsed}，恢复${totalRestore}点内力！`);
+            it.count -= actualUsed;
         }
-        playSound("heal");
-        it.count -= useCount;
         char.items = char.items.filter(i => i.count > 0);
+        playSound("heal");
         updateFightInfo();
         updateStatusBar();
         enemyTurn();
@@ -1352,17 +1358,22 @@ function useItemByIndex(idx, useCount) {
             return;
         }
         if (it.type === "hp") {
-            const totalRestore = Math.min(it.value * useCount, char.maxHp - char.hp);
+            const missing = char.maxHp - char.hp;
+            const actualUsed = Math.min(useCount, Math.ceil(missing / it.value));
+            const totalRestore = Math.min(it.value * actualUsed, missing);
             char.hp += totalRestore;
-            addLog(`你使用了【${it.name}】×${useCount}，恢复${totalRestore}点气血！`);
+            addLog(`你使用了【${it.name}】×${actualUsed}，恢复${totalRestore}点气血！`);
+            it.count -= actualUsed;
         } else if (it.type === "mp") {
-            const totalRestore = Math.min(it.value * useCount, char.maxMp - char.mp);
+            const missing = char.maxMp - char.mp;
+            const actualUsed = Math.min(useCount, Math.ceil(missing / it.value));
+            const totalRestore = Math.min(it.value * actualUsed, missing);
             char.mp += totalRestore;
-            addLog(`你使用了【${it.name}】×${useCount}，恢复${totalRestore}点内力！`);
+            addLog(`你使用了【${it.name}】×${actualUsed}，恢复${totalRestore}点内力！`);
+            it.count -= actualUsed;
         }
-        playSound("heal");
-        it.count -= useCount;
         char.items = char.items.filter(i => i.count > 0);
+        playSound("heal");
         updateStatusBar();
         saveGame();
         renderScene();
@@ -1397,6 +1408,12 @@ function newGame() {
     gameData.currentScene = "start";
     gameData.inBattle = false;
     gameData.enemy = null;
+    gameData.quests = {
+        currentMain: 0,
+        completedMains: [],
+        sideFlags: {},
+        choices: {}
+    };
     document.getElementById("char-name").innerText = "未创建";
     document.getElementById("char-school").innerText = "--";
     document.getElementById("char-date").innerText = "金元--年--月--日";
@@ -1422,8 +1439,10 @@ function loadGame() {
             const saved = JSON.parse(str);
             gameData.character = saved.character;
             gameData.currentScene = saved.currentScene ?? "start";
+            gameData.quests = saved.quests || gameData.quests;
+            gameData.inBattle = saved.inBattle || false;
+            gameData.enemy = saved.enemy || null;
             if (gameData.character) {
-                // 兼容旧存档：如果没有 realStart，用当前时间
                 if (!gameData.character.realStart) {
                     gameData.character.realStart = Date.now();
                     gameData.character.gameYear = 1;
@@ -1440,6 +1459,12 @@ function loadGame() {
                 if (gameData.character.boughtMaxMp === undefined) gameData.character.boughtMaxMp = 0;
                 if (gameData.character.boughtMaxHp === undefined) gameData.character.boughtMaxHp = 0;
                 if (gameData.character.boughtIronCloth === undefined) gameData.character.boughtIronCloth = false;
+                if (gameData.quests.currentMain > 0) {
+                    const stageKey = "stage" + gameData.quests.currentMain + "Done";
+                    if (gameData.quests[stageKey] === undefined) {
+                        gameData.quests[stageKey] = true;
+                    }
+                }
                 addLog("系统：已加载存档，欢迎继续你的江湖之旅！", "system");
             }
         }
@@ -1557,13 +1582,19 @@ function advanceMainStage() {
 
     if (!stage) return;
 
-    q.currentMain = nextStage;
+    const prevStageKey = "stage" + q.currentMain + "Done";
+    if (q.currentMain > 0 && !q[prevStageKey]) {
+        addLog("上一阶段尚未完成，无法推进主线。", "system");
+        return;
+    }
 
     const stageKey = "stage" + nextStage + "Done";
     q[stageKey] = true;
 
     const stageReadyKey = "stage" + (nextStage + 1) + "Ready";
     q[stageReadyKey] = true;
+
+    q.currentMain = nextStage;
 
     const char = gameData.character;
 
@@ -1660,6 +1691,12 @@ function processQuestThroughAction(actionName) {
         const reqLevel = levelReq[nextStage] || 99;
         if (char.level < reqLevel) {
             return false;
+        }
+
+        const prevStageKey = "stage" + q.currentMain + "Done";
+        if (q.currentMain > 0 && !q[prevStageKey]) {
+            addLog("上一阶段尚未完成，无法推进主线。", "system");
+            return true;
         }
 
         advanceMainStage();
