@@ -196,6 +196,16 @@ function addLog(text, type = "normal") {
     div.innerText = text;
     div.className = "log-item";
     if (type === "system") div.classList.add("system");
+    if (type === "event") div.classList.add("event");
+    logBoxEl.appendChild(div);
+    logBoxEl.scrollTop = logBoxEl.scrollHeight;
+}
+
+function addLogSeparator(text = "") {
+    if (!logBoxEl) return;
+    const div = document.createElement("div");
+    div.className = "log-separator";
+    div.innerText = text;
     logBoxEl.appendChild(div);
     logBoxEl.scrollTop = logBoxEl.scrollHeight;
 }
@@ -222,15 +232,23 @@ function typeWrite(el, text, speed = 20) {
 }
 
 // ========== 渲染主场景【修复重点】 ==========
+let _rendering = false;
+let _renderToken = 0;
+
 async function renderScene() {
     if (!optionsListEl) return;
+    if (_rendering) return;
+    _rendering = true;
+    const myToken = ++_renderToken;
     optionsListEl.innerHTML = "";
     // 已经存在角色，渲染正式游戏场景
     if (gameData.character) {
         const scene = gameData.scenes[gameData.currentScene];
-        if (!scene) return;
+        if (!scene) { _rendering = false; return; }
         if (sceneTitleEl) sceneTitleEl.innerText = scene.title;
         if (sceneDescEl) await typeWrite(sceneDescEl, scene.desc, 22);
+
+        if (myToken !== _renderToken) { _rendering = false; return; }
 
         scene.options.forEach(opt => {
             const li = document.createElement("li");
@@ -251,17 +269,25 @@ async function renderScene() {
         optionsListEl.appendChild(li);
     }
     updateStatusBar();
+    _rendering = false;
 }
 
 // ========== 选项点击处理 ==========
+let _actionBusy = false;
 function handleOptionClick(option) {
     if (gameData.inBattle) return;
+    if (_actionBusy) return;
+    _actionBusy = true;
     if (option.next) {
         gameData.currentScene = option.next;
         renderScene();
+        _actionBusy = false;
     } else if (option.action) {
         runAction(option.action);
     }
+}
+function _endAction() {
+    _actionBusy = false;
 }
 
 function runAction(actionName) {
@@ -346,37 +372,39 @@ function runAction(actionName) {
             break;
         case "joinDuel":
             joinDuel();
-            break;
+            return;
         case "watchDuel":
             watchDuel();
             break;
         case "helpLu":
             helpLu();
-            break;
+            return;
         case "refuseLu":
             refuseLu();
             break;
     }
     updateStatusBar();
+    _endAction();
 }
 // ========== 剧情事件 ==========
 function exploreCave() {
     const char = gameData.character;
     if (!char) return;
+    addLogSeparator("探索洞穴");
     const roll = Math.random();
     if (roll < 0.4) {
         const bonus = 20 + Math.floor(Math.random() * 30);
         char.money += bonus;
-        addLog(`你在洞穴深处发现了一个古老的宝箱，获得${bonus}银两！`);
+        addLog(`你在洞穴深处发现了一个古老的宝箱，获得${bonus}银两！`, "event");
         playSound("gain");
     } else if (roll < 0.7) {
         const hpLoss = 10 + Math.floor(Math.random() * 15);
         char.hp = Math.max(1, char.hp - hpLoss);
-        addLog(`洞穴中窜出一群蝙蝠，你受到${hpLoss}点伤害！`);
+        addLog(`洞穴中窜出一群蝙蝠，你受到${hpLoss}点伤害！`, "event");
         playSound("hurt");
     } else if (roll < 0.85) {
         const expGain = 25 + Math.floor(Math.random() * 35);
-        addLog(`你发现石壁上刻着高深武学心法，领悟了${expGain}点经验！`);
+        addLog(`你发现石壁上刻着高深武学心法，领悟了${expGain}点经验！`, "event");
         addExp(expGain);
     } else {
         addLog("洞穴空空如也，你白跑一趟。");
@@ -388,30 +416,34 @@ function exploreCave() {
 
 function joinDuel() {
     const char = gameData.character;
-    if (!char) return;
+    if (!char) { _endAction(); return; }
     if (char.level < 2) {
         addLog("你功力尚浅，擂台旁的高手摇了摇头，建议你先升到2级再来。");
         renderScene();
+        _endAction();
         return;
     }
-    addLog("你跳上擂台，与小姐的护卫交手！");
+    addLogSeparator("比武招亲");
+    addLog("你跳上擂台，与小姐的护卫交手！", "event");
     setTimeout(() => {
         const winRate = 0.4 + (char.level - 2) * 0.1 + char.attack * 0.01;
         if (Math.random() < winRate) {
             const reward = 50 + char.level * 20;
             char.money += reward;
-            addLog(`🎉 你大胜而归！官家小姐赠予你${reward}银两作为谢礼！`);
+            addLog(`🎉 你大胜而归！官家小姐赠予你${reward}银两作为谢礼！`, "event");
             playSound("gain");
             addExp(30);
         } else {
             const dmg = 15 + Math.floor(Math.random() * 20);
             char.hp = Math.max(1, char.hp - dmg);
-            addLog(`你被护卫击飞，受了${dmg}点伤害，狼狈下台。`);
+            addLog(`你被护卫击飞，受了${dmg}点伤害，狼狈下台。`, "event");
             playSound("hurt");
         }
+        addLogSeparator("比武结束");
         saveGame();
         updateStatusBar();
         renderScene();
+        _endAction();
     }, 1000);
 }
 
@@ -422,10 +454,11 @@ function watchDuel() {
 
 function helpLu() {
     const char = gameData.character;
-    if (!char) return;
-    addLog("你挺身而出，与陆小凤一起对抗强敌！");
+    if (!char) { _endAction(); return; }
+    addLogSeparator("拔刀相助");
+    addLog("你挺身而出，与陆小凤一起对抗强敌！", "event");
     setTimeout(() => {
-        addLog("一场恶战后，你们击退了敌人。陆小凤感激地递给你一瓶金疮药。");
+        addLog("一场恶战后，你们击退了敌人。陆小凤感激地递给你一瓶金疮药。", "event");
         const existing = char.items.find(i => i.name === "金疮药");
         if (existing) { existing.count += 2; }
         else { char.items.push({ name: "金疮药", desc: "恢复40气血", type: "hp", value: 40, count: 2 }); }
@@ -434,10 +467,12 @@ function helpLu() {
         saveGame();
         updateStatusBar();
         renderScene();
+        _endAction();
     }, 1000);
 }
 
 function refuseLu() {
+    addLogSeparator("婉言谢绝");
     addLog("你婉言谢绝了陆小凤，他笑笑说后会有期，转身离去。");
     renderScene();
 }
@@ -450,22 +485,25 @@ function triggerRandomEvent() {
 
     if (roll < 0.50) {
         // 50% 概率：遭遇战斗
+        addLogSeparator("遭遇战斗");
         startBattle();
 
     } else if (roll < 0.65) {
         // 15% 概率：发现宝箱
+        addLogSeparator("发现宝箱");
         const reward = 20 + Math.floor(Math.random() * 40);
         char.money += reward;
-        addLog(`你在草丛中发现一个宝箱，获得${reward}银两！`);
+        addLog(`你在草丛中发现一个宝箱，获得${reward}银两！`, "event");
         playSound("gain");
         saveGame();
         updateStatusBar();
 
     } else if (roll < 0.75) {
         // 10% 概率：遇到陷阱
+        addLogSeparator("遭遇陷阱");
         const dmg = 8 + Math.floor(Math.random() * 12);
         char.hp = Math.max(1, char.hp - dmg);
-        addLog(`你踩中了一个陷阱，损失${dmg}点气血！`);
+        addLog(`你踩中了一个陷阱，损失${dmg}点气血！`, "event");
         playSound("hurt");
         updateStatusBar();
         if (char.hp <= 0) {
@@ -476,13 +514,15 @@ function triggerRandomEvent() {
 
     } else if (roll < 0.88) {
         // 13% 概率：遇到江湖高人
+        addLogSeparator("江湖奇遇");
         const gain = 15 + Math.floor(Math.random() * 25);
-        addLog(`一位隐居高人向你指点，获得${gain}点经验！`);
+        addLog(`一位隐居高人向你指点，获得${gain}点经验！`, "event");
         addExp(gain);
 
     } else if (roll < 0.95) {
         // 7% 概率：遇到独行商人
-        addLog("你遇到一位独行商人，他以优惠价卖你金疮药(15银两)。");
+        addLogSeparator("独行商人");
+        addLog("你遇到一位独行商人，他以优惠价卖你金疮药(15银两)。", "event");
         addLog("（商人匆匆离去，错过了就没了！）");
         if (char.money >= 15) {
             const existing = char.items.find(i => i.name === "金疮药");
@@ -499,12 +539,14 @@ function triggerRandomEvent() {
 
     } else if (roll < 0.98) {
         // 3% 概率：偶遇陆小凤
+        addLogSeparator("偶遇陆小凤");
         gameData.currentScene = "encounter";
         renderScene();
         return;
 
     } else {
         // 2% 概率：风平浪静
+        addLogSeparator("风平浪静");
         addLog("郊外一片寂静，你漫步片刻，什么也没发生。");
     }
     renderScene();
@@ -776,7 +818,7 @@ function startBattle() {
     const randIdx = Math.floor(Math.random() * gameData.enemyList.length);
     gameData.enemy = { ...gameData.enemyList[randIdx] };
     const e = gameData.enemy;
-    addLog(`\n====遭遇战斗！对手：${e.name}====`);
+    addLog(`遭遇战斗！对手：${e.name}`, "event");
     playSound("fight");
     const modal = document.getElementById("fight-modal");
     if (modal) modal.style.display = "flex";
@@ -845,11 +887,12 @@ function playerAttack() {
     playSound("hurt");
     updateFightInfo();
     if (enemy.hp <= 0) {
-        addLog(`✅你击败了${enemy.name}！获得${enemy.money}银两！`);
+        addLog(`✅你击败了${enemy.name}！获得${enemy.money}银两！`, "event");
         char.money += enemy.money;
         addExp(enemy.exp || 10);
         playSound("gain");
         updateStatusBar();
+        addLogSeparator("战斗胜利");
         endBattle(true);
         return;
     }
@@ -881,11 +924,12 @@ function useSkill() {
     updateFightInfo();
     updateStatusBar();
     if (enemy.hp <= 0) {
-        addLog(`✅你击败了${enemy.name}！获得${enemy.money}银两！`);
+        addLog(`✅你击败了${enemy.name}！获得${enemy.money}银两！`, "event");
         char.money += enemy.money;
         addExp(enemy.exp || 10);
         playSound("gain");
         updateStatusBar();
+        addLogSeparator("战斗胜利");
         endBattle(true);
         return;
     }
@@ -987,11 +1031,12 @@ function fleeFight() {
     if (!char || !enemy) return;
     const success = Math.random() < 0.5;
     if (success) {
-        addLog("你成功逃离了战斗！");
+        addLog("你成功逃离了战斗！", "event");
+        addLogSeparator("成功逃脱");
         playSound("click");
         endBattle(false);
     } else {
-        addLog("逃跑失败！敌人紧追不舍！");
+        addLog("逃跑失败！敌人紧追不舍！", "event");
         enemyTurn();
     }
 }
