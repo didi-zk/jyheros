@@ -544,6 +544,7 @@ function helpLu() {
 function refuseLu() {
     addLogSeparator("婉言谢绝");
     addLog("你婉言谢绝了陆小凤，他笑笑说后会有期，转身离去。");
+    gameData.currentScene = "wild";
     renderScene();
 }
 
