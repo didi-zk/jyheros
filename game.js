@@ -246,13 +246,13 @@ function createCharacter(){
     const initWu = gameData.martialArts.find(m=>m.school === school || m.school==="通用");
     if(initWu){
         gameData.character.martialArts.push(initWu.name);
-        addLog(`系统：你获得了初始武学【${initWu.name}】！","system");
+        addLog(`系统：你获得了初始武学【${initWu.name}】！`,`system`);
     }
     // ✅ 创建完成直接切到正式游戏场景
     gameData.currentScene = "start";
     closeCreateCharModal();
     saveGame();
-    addLog(`系统：角色【${name}】创建成功！你已拜入${school}门下，开始你的江湖冒险吧！","system");
+    addLog(`系统：角色【${name}】创建成功！你已拜入${school}门下，开始你的江湖冒险吧！`,`system`);
     playSound("gain");
     renderScene();
 }
@@ -412,7 +412,7 @@ window.onload = function(){
     // 兼容：index.html 可能没有 confirm-create-btn，先做安全检查再绑定
     const confirmBtn = document.getElementById("confirm-create-btn");
     if(confirmBtn) confirmBtn.onclick = createCharacter;
-    // 绑定音量控件（如果存在）
+    // 绑定音量控件（如果存在)
     const vol = document.getElementById("volume");
     if(vol) vol.addEventListener('input', (e)=> setVolume(e.target.value));
     const toggleBtn = document.getElementById("toggle-sound");
