@@ -9,13 +9,11 @@ const gameData = {
             title: "襄阳城门",
             desc: "你站在襄阳城的城门之下，人来人往，江湖气息扑面而来。城门边上有酒馆、武馆、杂货铺，远处是苍茫古道。你可以四处逛逛，开启你的江湖冒险吧！",
             options: [
-                { text: "进入酒馆", next: "tavern" },
-                { text: "前往武馆", next: "wuguan" },
-                { text: "杂货铺", next: "shop" },
-                { text: "出城闯荡", next: "wild" },
-                { text: "比武招亲", next: "duel" },
-                { text: "查看背包", action: "showBag" },
-                { text: "保存游戏", action: "saveGame" }
+                { text: "进入酒馆", next: "tavern", group: "城中活动" },
+                { text: "前往武馆", next: "wuguan", group: "城中活动" },
+                { text: "杂货铺", next: "shop", group: "城中活动" },
+                { text: "出城闯荡", next: "wild", group: "江湖历练" },
+                { text: "比武招亲", next: "duel", group: "江湖历练" }
             ]
         },
         tavern: {
@@ -135,6 +133,8 @@ let bgmAudio = null;       // 背景音乐Audio对象
 function setVolume(val) {
     globalVolume = parseFloat(val) / 100;
     if (bgmAudio) bgmAudio.volume = globalVolume * 0.5;
+    const volEl = document.getElementById("volume-val");
+    if (volEl) volEl.innerText = val;
 }
 
 // 播放游戏音效（click/hurt/gain等）
@@ -189,6 +189,44 @@ function loadBgmFile(event) {
     const btn = document.getElementById('btn-bgm');
     if (btn) btn.innerText = '🎵 开';
 }
+
+// ========== 下拉菜单 ==========
+function toggleMenu() {
+    const menu = document.getElementById("top-menu");
+    if (menu) menu.classList.toggle("open");
+}
+function closeMenu() {
+    const menu = document.getElementById("top-menu");
+    if (menu) menu.classList.remove("open");
+}
+document.addEventListener("click", function (e) {
+    const menu = document.getElementById("top-menu");
+    const toggle = document.querySelector(".dropdown-toggle");
+    if (menu && menu.classList.contains("open")) {
+        if (!menu.contains(e.target) && !toggle.contains(e.target)) {
+            menu.classList.remove("open");
+        }
+    }
+});
+
+// ========== 音效弹窗 ==========
+function openAudioModal() {
+    const modal = document.getElementById("audio-modal");
+    if (modal) modal.style.display = "flex";
+    const volEl = document.getElementById("volume-val");
+    if (volEl) volEl.innerText = document.getElementById("volume").value;
+}
+function closeAudioModal() {
+    const modal = document.getElementById("audio-modal");
+    if (modal) modal.style.display = "none";
+}
+
+// ========== 分组折叠 ==========
+function toggleSceneGroup(titleEl) {
+    const group = titleEl.parentElement;
+    group.classList.toggle("collapsed");
+}
+
 // ========== 日志输出 ==========
 function addLog(text, type = "normal") {
     if (!logBoxEl) {
@@ -245,7 +283,6 @@ async function renderScene() {
     _rendering = true;
     const myToken = ++_renderToken;
     optionsListEl.innerHTML = "";
-    // 已经存在角色，渲染正式游戏场景
     if (gameData.character) {
         const scene = gameData.scenes[gameData.currentScene];
         if (!scene) { _rendering = false; return; }
@@ -254,17 +291,52 @@ async function renderScene() {
 
         if (myToken !== _renderToken) { _rendering = false; return; }
 
-        scene.options.forEach(opt => {
-            const li = document.createElement("li");
-            li.innerText = opt.text;
-            li.onclick = () => {
-                playSound("click");
-                handleOptionClick(opt);
-            }
-            optionsListEl.appendChild(li);
-        })
+        // 检测是否有分组
+        const hasGroups = scene.options.some(o => o.group);
+        if (hasGroups) {
+            const groups = {};
+            scene.options.forEach(opt => {
+                const g = opt.group || "其他";
+                if (!groups[g]) groups[g] = [];
+                groups[g].push(opt);
+            });
+            const wrapper = document.createElement("div");
+            wrapper.className = "scene-groups-wrapper";
+            Object.keys(groups).forEach(gName => {
+                const gDiv = document.createElement("div");
+                gDiv.className = "scene-group";
+                gDiv.innerHTML = `
+                    <div class="scene-group-title" onclick="toggleSceneGroup(this)">
+                        <span>【${gName}】</span>
+                        <span class="arrow">▼</span>
+                    </div>
+                    <div class="scene-group-body"></div>
+                `;
+                const body = gDiv.querySelector(".scene-group-body");
+                groups[gName].forEach(opt => {
+                    const li = document.createElement("li");
+                    li.innerText = opt.text;
+                    li.onclick = () => {
+                        playSound("click");
+                        handleOptionClick(opt);
+                    };
+                    body.appendChild(li);
+                });
+                wrapper.appendChild(gDiv);
+            });
+            optionsListEl.appendChild(wrapper);
+        } else {
+            scene.options.forEach(opt => {
+                const li = document.createElement("li");
+                li.innerText = opt.text;
+                li.onclick = () => {
+                    playSound("click");
+                    handleOptionClick(opt);
+                }
+                optionsListEl.appendChild(li);
+            });
+        }
     } else {
-        // 没有角色：欢迎页 + 创建角色按钮
         if (sceneTitleEl) sceneTitleEl.innerText = "欢迎来到金庸群侠传";
         if (sceneDescEl) sceneDescEl.innerText = "你是一位初入江湖的少侠，怀揣着武侠梦，即将开启一段传奇之旅。请先创建你的角色，开始这段江湖冒险吧！";
         const li = document.createElement("li");
@@ -851,6 +923,8 @@ function updateStatusBar() {
     const moneyEl = document.getElementById("char-money");
     const expEl = document.getElementById("char-exp");
     const maxExpEl = document.getElementById("char-max-exp");
+    const hpBar = document.getElementById("char-hp-bar");
+    const mpBar = document.getElementById("char-mp-bar");
     if (!c) {
         if (nameEl) nameEl.innerText = "未创建";
         if (schoolEl) schoolEl.innerText = "--";
@@ -865,6 +939,8 @@ function updateStatusBar() {
         if (moneyEl) moneyEl.innerText = "0";
         if (expEl) expEl.innerText = "0";
         if (maxExpEl) maxExpEl.innerText = "100";
+        if (hpBar) hpBar.style.width = "0%";
+        if (mpBar) mpBar.style.width = "0%";
         return;
     }
     if (nameEl) nameEl.innerText = c.name;
@@ -881,6 +957,8 @@ function updateStatusBar() {
     if (maxExpEl) maxExpEl.innerText = c.maxExp;
     if (atkEl) atkEl.innerText = c.attack;
     if (defEl) defEl.innerText = c.defense;
+    if (hpBar) hpBar.style.width = (c.maxHp > 0 ? (c.hp / c.maxHp * 100) : 0) + "%";
+    if (mpBar) mpBar.style.width = (c.maxMp > 0 ? (c.mp / c.maxMp * 100) : 0) + "%";
 }
 
 // ========== 背包（使用 modal 而非 alert）==========
@@ -1201,6 +1279,31 @@ function fleeFight() {
 // ========== 存档本地存储 ==========
 function saveGame() {
     try { localStorage.setItem("jinyong-game-data", JSON.stringify(gameData)); } catch (e) { }
+}
+
+function newGame() {
+    if (!confirm("确定要开启新游戏吗？当前存档将被清除！")) return;
+    localStorage.removeItem("jinyong-game-data");
+    gameData.character = null;
+    gameData.currentScene = "start";
+    gameData.inBattle = false;
+    gameData.enemy = null;
+    document.getElementById("char-name").innerText = "未创建";
+    document.getElementById("char-school").innerText = "--";
+    document.getElementById("char-date").innerText = "金元--年--月--日";
+    document.getElementById("char-level").innerText = "1";
+    document.getElementById("char-exp").innerText = "0";
+    document.getElementById("char-max-exp").innerText = "100";
+    document.getElementById("char-hp").innerText = "100";
+    document.getElementById("char-max-hp").innerText = "100";
+    document.getElementById("char-mp").innerText = "50";
+    document.getElementById("char-max-mp").innerText = "50";
+    document.getElementById("char-atk").innerText = "10";
+    document.getElementById("char-def").innerText = "5";
+    document.getElementById("char-money").innerText = "0";
+    document.getElementById("char-avatar").innerText = "🗡️";
+    addLog("系统：已开启新游戏，请创建角色。", "system");
+    renderScene();
 }
 
 function loadGame() {

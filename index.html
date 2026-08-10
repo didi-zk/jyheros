@@ -16,41 +16,65 @@
 
         <!-- 角色简历面板 -->
         <div class="char-panel" id="char-panel">
-            <div class="char-panel-left">
+            <div class="char-header">
                 <div class="avatar" id="char-avatar">🗡️</div>
-                <div class="char-name" id="char-name">未创建</div>
-                <div class="char-school" id="char-school">--</div>
-                <div class="char-date" id="char-date">金元--年--月--日</div>
-            </div>
-            <div class="char-panel-right">
-                <div class="attr-row"><span>等级</span><span id="char-level">1</span></div>
-                <div class="attr-row"><span>经验</span><span id="char-exp">0</span>/<span id="char-max-exp">100</span>
+                <div class="char-basic">
+                    <div class="char-name-row">
+                        <span class="char-name" id="char-name">未创建</span>
+                        <span class="char-sep">·</span>
+                        <span class="char-school" id="char-school">--</span>
+                        <span class="char-sep">·</span>
+                        <span class="char-date" id="char-date">金元--年--月--日</span>
+                    </div>
                 </div>
-                <div class="attr-row"><span>气血</span><span id="char-hp">100</span>/<span id="char-max-hp">100</span>
+                <div class="char-panel-actions">
+                    <div class="dropdown">
+                        <button class="btn-small dropdown-toggle" onclick="toggleMenu()">☰ 菜单</button>
+                        <div class="dropdown-menu" id="top-menu">
+                            <div class="dropdown-item" onclick="openBagModal();closeMenu();">物品</div>
+                            <div class="dropdown-item" onclick="openAudioModal();closeMenu();">音效/音乐</div>
+                            <div class="dropdown-divider"></div>
+                            <div class="dropdown-item" onclick="saveGame();closeMenu();">存档</div>
+                            <div class="dropdown-item" onclick="loadGame();closeMenu();">读档</div>
+                            <div class="dropdown-item dropdown-danger" onclick="newGame();closeMenu();">新游戏</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="attr-row"><span>内力</span><span id="char-mp">50</span>/<span id="char-max-mp">50</span></div>
-                <div class="attr-row"><span>攻击</span><span id="char-atk">10</span></div>
-                <div class="attr-row"><span>防御</span><span id="char-def">5</span></div>
-                <div class="attr-row"><span>银两</span><span id="char-money">0</span></div>
             </div>
-            <div class="char-panel-actions">
-                <button class="btn-small" onclick="openBagModal()">物品栏</button>
-                <button class="btn-small" onclick="saveGame()">存档</button>
+            <div class="char-stats-card">
+                <div class="char-level-row">
+                    <span class="char-level-label">Lv.<span id="char-level">1</span></span>
+                    <span class="char-exp-text">经验 <span id="char-exp">0</span>/<span
+                            id="char-max-exp">100</span></span>
+                </div>
+                <div class="char-body-row">
+                    <div class="char-bars">
+                        <div class="char-bar-item">
+                            <div class="char-bar-label">气血 <span id="char-hp">100</span>/<span
+                                    id="char-max-hp">100</span></div>
+                            <div class="char-bar-bg">
+                                <div class="char-bar-fill char-bar-hp" id="char-hp-bar"></div>
+                            </div>
+                        </div>
+                        <div class="char-bar-item">
+                            <div class="char-bar-label">内力 <span id="char-mp">50</span>/<span id="char-max-mp">50</span>
+                            </div>
+                            <div class="char-bar-bg">
+                                <div class="char-bar-fill char-bar-mp" id="char-mp-bar"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="char-attr-row">
+                        <div class="char-attr-item"><span class="attr-key">攻击</span> <span id="char-atk">10</span></div>
+                        <div class="char-attr-item"><span class="attr-key">防御</span> <span id="char-def">5</span></div>
+                        <div class="char-attr-item"><span class="attr-key">银两</span> <span id="char-money">0</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- 音效控制 -->
-        <div class="sound-control">
-            <span>音效：</span>
-            <button id="btn-sound" onclick="toggleSound()">🔊 开</button>
-            <span>音量：</span>
-            <input type="range" id="volume" min="0" max="100" value="70" oninput="setVolume(this.value)">
-            <span>BGM：</span>
-            <button id="btn-bgm" onclick="toggleBgm()">🎵 开</button>
-            <button onclick="document.getElementById('bgm-file').click()">📁选曲</button>
-            <input type="file" id="bgm-file" accept="audio/*" style="display:none" onchange="loadBgmFile(event)">
-            <span id="bgm-name" style="font-size:0.85rem;color:#666;"></span>
-        </div>
+        <!-- 音效控制（已移至菜单弹窗） -->
 
         <!-- 游戏主面板 -->
         <div class="game-panel">
@@ -108,6 +132,36 @@
             <div class="shop-list" id="shop-list"></div>
             <div style="text-align:center;margin-top:15px;">
                 <button class="btn btn-cancel" onclick="closeShopModal()">离开杂货铺</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 音效弹窗 -->
+    <div class="modal" id="audio-modal">
+        <div class="modal-content">
+            <div class="modal-title">音效 / 音乐</div>
+            <div style="padding:10px 0;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:15px;">
+                    <span>音效：</span>
+                    <button id="btn-sound" onclick="toggleSound()">🔊 开</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:15px;">
+                    <span>音量：</span>
+                    <input type="range" id="volume" min="0" max="100" value="70" oninput="setVolume(this.value)"
+                        style="flex:1;max-width:200px;">
+                    <span id="volume-val">70</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:15px;">
+                    <span>BGM：</span>
+                    <button id="btn-bgm" onclick="toggleBgm()">🎵 开</button>
+                    <button onclick="document.getElementById('bgm-file').click()">📁选曲</button>
+                    <input type="file" id="bgm-file" accept="audio/*" style="display:none"
+                        onchange="loadBgmFile(event)">
+                </div>
+                <div style="color:#666;font-size:0.85rem;" id="bgm-name"></div>
+            </div>
+            <div style="text-align:center;margin-top:15px;">
+                <button class="btn btn-cancel" onclick="closeAudioModal()">关闭</button>
             </div>
         </div>
     </div>
