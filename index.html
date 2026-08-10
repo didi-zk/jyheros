@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>金庸群侠传 - 文字版</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>金庸群侠传</h1>
+
+        <!-- 状态条 -->
+        <div class="status-bar">
+            <div class="status-item">角色：<span id="char-name">未创建</span></div>
+            <div class="status-item">等级：<span id="char-level">1</span></div>
+            <div class="status-item">气血：<span id="char-hp">100</span>/<span id="char-max-hp">100</span></div>
+            <div class="status-item">内力：<span id="char-mp">50</span>/<span id="char-max-mp">50</span></div>
+            <div class="status-item">银两：<span id="char-money">0</span></div>
+            <button class="btn-small" onclick="openBagModal()">物品栏(B)</button>
+            <button class="btn-small" onclick="saveGame()">存档(S)</button>
+        </div>
+
+        <!-- 游戏主面板 -->
+        <div class="game-panel">
+            <div class="scene-area" id="scene-area">
+                <div class="scene-title" id="scene-title">欢迎来到金庸群侠传</div>
+                <div class="scene-desc" id="scene-desc">你是一位初入江湖的少侠，怀揣着武侠梦，即将开启一段传奇之旅。请先创建你的角色，开始这段江湖冒险吧！</div>
+                <ul class="options-list" id="options-list">
+                    <li onclick="openCreateCharModal()">创建角色</li>
+                </ul>
+            </div>
+            <!-- 日志区域 -->
+            <div class="log-area" id="log-area">
+                <div class="log-item system">系统：欢迎来到金庸群侠传文字版！</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 角色创建弹窗 -->
+    <div class="modal" id="create-char-modal">
+        <div class="modal-content">
+            <div class="modal-title">创建角色</div>
+            <div class="form-group">
+                <label for="char-name-input">角色姓名：</label>
+                <input type="text" id="char-name-input" placeholder="请输入你的江湖名号">
+            </div>
+            <div class="form-group">
+                <label for="char-school">选择门派：</label>
+                <select id="char-school">
+                    <option value="少林">少林（擅长大乘佛法，气血深厚）</option>
+                    <option value="武当">武当（擅长太极剑法，内力绵长）</option>
+                    <option value="丐帮">丐帮（擅长降龙十八掌，招式刚猛）</option>
+                    <option value="华山">华山（擅长独孤九剑，剑法灵动）</option>
+                    <option value="全真">全真（擅长天罡北斗阵，道家心法）</option>
+                    <option value="桃花岛">桃花岛（擅长落英神剑掌，身法出众）</option>
+                </select>
+            </div>
+            <button class="btn" onclick="createCharacter()">确认创建</button>
+            <button class="btn btn-cancel" onclick="closeCreateCharModal()">取消</button>
+        </div>
+    </div>
+
+    <!-- 物品栏弹窗 -->
+    <div class="modal" id="bag-modal">
+        <div class="modal-content">
+            <div class="modal-title">物品 & 武学</div>
+            <div id="bag-content"></div>
+            <button class="btn btn-cancel" onclick="closeBagModal()">关闭</button>
+        </div>
+    </div>
+
+    <script src="./game.js"></script>
+</body>
+</html>
