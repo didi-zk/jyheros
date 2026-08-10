@@ -1,75 +1,171 @@
-// 游戏数据
+// -------------------- 全局音效系统 --------------------
+let soundEnabled = true;
+let bgm;
+const sounds = {};
+
+// 预加载音效
+function initSounds() {
+    const soundList = [
+        { name: "bgm", src: "./sounds/bgm.mp3", loop: true },
+        { name: "click", src: "./sounds/click.mp3" },
+        { name: "fight", src: "./sounds/fight.mp3" },
+        { name: "gain", src: "./sounds/gain.mp3" },
+        { name: "levelup", src: "./sounds/levelup.mp3" },
+        { name: "hurt", src: "./sounds/hurt.mp3" },
+        { name: "heal", src: "./sounds/heal.mp3" }
+    ];
+    soundList.forEach(s => {
+        const audio = new Audio(s.src);
+        audio.loop = s.loop || false;
+        sounds[s.name] = audio;
+    });
+    bgm = sounds.bgm;
+    setVolume(70);
+}
+
+function playSound(name) {
+    if (!soundEnabled || !sounds[name]) return;
+    sounds[name].currentTime = 0;
+    sounds[name].play().catch(e => console.log("音效播放失败:", e));
+}
+
+function toggleSound() {
+    soundEnabled = !soundEnabled;
+    document.getElementById("toggle-sound").textContent = soundEnabled ? "🔊 音效开" : "🔇 音效关";
+    if (soundEnabled) bgm.play();
+    else bgm.pause();
+}
+
+function setVolume(val) {
+    const vol = val / 100;
+    Object.values(sounds).forEach(a => a.volume = vol);
+}
+
+// -------------------- 游戏数据（剧情大幅扩充） --------------------
 let gameData = {
     character: null,
     currentScene: "start",
+    currentFight: null,
     scenes: {
+        // 初始场景
         start: {
-            title: "江湖起点",
-            desc: "你站在襄阳城门口，人来人往，江湖气息浓厚。前方有客栈、武馆，还有一位看似乞丐的老者在路边坐着。",
+            title: "江湖起点·襄阳城",
+            desc: "你站在襄阳城门口，人来人往，江湖气息浓厚。前方有客栈、武馆，还有一位乞丐老者。远处可见郭靖黄蓉镇守的襄阳城大旗。",
             options: [
                 { text: "前往客栈休息", nextScene: "inn" },
                 { text: "前往武馆学武", nextScene: "martial-hall" },
                 { text: "与路边乞丐交谈", nextScene: "beggar-talk" },
-                { text: "离开襄阳城，前往野外探索", nextScene: "wilderness" }
+                { text: "出城前往桃花岛", nextScene: "taohua-island" },
+                { text: "前往光明顶", nextScene: "mingding-top" },
+                { text: "前往侠客岛", nextScene: "xiake-island" }
             ]
         },
+        // 客栈
         inn: {
             title: "襄阳客栈",
-            desc: "客栈内人声鼎沸，江湖人士三三两两聚在一起，谈论着江湖传闻。店小二热情地迎了上来。",
+            desc: "客栈内人声鼎沸，江湖人士谈论着武林秘闻。店小二：客官，里面请！最近江湖不太平，听说光明顶明教与六大派要开战了。",
             options: [
-                { text: "点一壶酒，几碟小菜（花费10银两）", nextScene: "inn-eat", cost: { money: 10 } },
-                { text: "向店小二打听江湖消息", nextScene: "inn-ask" },
-                { text: "在客栈内寻找志同道合的伙伴", nextScene: "inn-friend" },
-                { text: "离开客栈，返回城门口", nextScene: "start" }
+                { text: "点酒菜恢复气血（10两）", nextScene: "inn-eat", cost: { money: 10 } },
+                { text: "打听江湖消息", nextScene: "inn-ask" },
+                { text: "寻找伙伴", nextScene: "inn-friend" },
+                { text: "返回城门", nextScene: "start" }
             ]
         },
+        // 武馆
         "martial-hall": {
             title: "襄阳武馆",
-            desc: "武馆内弟子们正在刻苦练拳，馆主是一位身材魁梧的中年汉子，见你前来，主动上前打招呼。",
+            desc: "武馆内弟子练拳，馆主：少侠，想学武吗？基础拳法20两，包教包会！",
             options: [
-                { text: "向馆主学习基础拳法（花费20银两，提升攻击力）", nextScene: "martial-learn", cost: { money: 20 } },
-                { text: "与武馆弟子切磋武艺", nextScene: "martial-fight" },
-                { text: "向馆主请教江湖武学心得", nextScene: "martial-ask" },
-                { text: "离开武馆，返回城门口", nextScene: "start" }
+                { text: "学基础拳法（20两）", nextScene: "martial-learn", cost: { money: 20 } },
+                { text: "与弟子切磋", nextScene: "martial-fight" },
+                { text: "请教武学", nextScene: "martial-ask" },
+                { text: "返回城门", nextScene: "start" }
             ]
         },
+        // 乞丐剧情（洪七公）
         "beggar-talk": {
-            title: "与乞丐交谈",
-            desc: "老者见你主动搭话，眼睛一亮，缓缓说道：'少侠初入江湖，可知这江湖险恶？老夫这里有一本粗浅的武学秘籍，可赠予少侠，只需你帮老夫一个小忙。'",
+            title: "偶遇洪七公",
+            desc: "老者笑道：少年人，不错！老夫乃丐帮帮主洪七公。见你根骨不错，传你一招【降龙十八掌·亢龙有悔】，但需帮我找回被抢的绿玉杖。",
             options: [
-                { text: "答应帮忙，接受秘籍", nextScene: "beggar-accept" },
-                { text: "询问老者需要帮什么忙", nextScene: "beggar-ask-task" },
-                { text: "婉拒老者，离开此处", nextScene: "start" }
+                { text: "答应帮忙，学降龙掌", nextScene: "beggar-accept" },
+                { text: "询问详情", nextScene: "beggar-ask-task" },
+                { text: "婉拒离开", nextScene: "start" }
             ]
         },
+        // 野外
         wilderness: {
             title: "襄阳野外",
-            desc: "离开襄阳城，眼前是一片茂密的树林，隐约能听到野兽的叫声，还有一些可疑的人影在树林中晃动。",
+            desc: "城外树林，隐约有野兽与劫匪。",
             options: [
-                { text: "深入树林探索，寻找宝物", nextScene: "wilderness-explore" },
-                { text: "小心前行，避开可疑人影", nextScene: "wilderness-careful" },
-                { text: "返回襄阳城门口", nextScene: "start" }
+                { text: "深入探索", nextScene: "wilderness-explore" },
+                { text: "小心前行", nextScene: "wilderness-careful" },
+                { text: "返回城门", nextScene: "start" }
+            ]
+        },
+        // 新增：桃花岛
+        "taohua-island": {
+            title: "桃花岛·黄药师",
+            desc: "你乘船来到桃花岛，岛上桃花盛开，琴声悠扬。黄药师：何方小子，敢闯我桃花岛？报上名来！",
+            options: [
+                { text: "自报家门，求见黄岛主", nextScene: "taohua-meet" },
+                { text: "挑战黄药师", nextScene: "taohua-fight" },
+                { text: "寻找九阴真经", nextScene: "taohua-search" },
+                { text: "返回襄阳", nextScene: "start" }
+            ]
+        },
+        // 新增：光明顶
+        "mingding-top": {
+            title: "光明顶·大战",
+            desc: "光明顶上，明教张无忌正与六大派高手对峙。你可选择助明教或助六大派。",
+            options: [
+                { text: "助明教张无忌", nextScene: "mingding-help-mingjiao" },
+                { text: "助六大派", nextScene: "mingding-help-liuda" },
+                { text: "旁观", nextScene: "mingding-watch" },
+                { text: "返回襄阳", nextScene: "start" }
+            ]
+        },
+        // 新增：侠客岛
+        "xiake-island": {
+            title: "侠客岛·太玄经",
+            desc: "你来到侠客岛，岛上刻满武学秘籍。龙木二岛主：少年人，可愿参悟太玄经？",
+            options: [
+                { text: "参悟太玄经", nextScene: "xiake-study" },
+                { text: "挑战岛主", nextScene: "xiake-fight" },
+                { text: "返回襄阳", nextScene: "start" }
             ]
         }
     },
+    // 武学扩充
     martialArts: [
-        { name: "基础拳法", school: "通用", attack: 5, desc: "江湖基础拳法，简单实用" },
-        { name: "太极剑法", school: "武当", attack: 8, mpCost: 3, desc: "武当派绝学，以柔克刚" },
-        { name: "降龙十八掌", school: "丐帮", attack: 12, mpCost: 5, desc: "丐帮镇帮之宝，刚猛无俦" },
-        { name: "独孤九剑", school: "华山", attack: 10, mpCost: 4, desc: "华山派绝学，剑法灵动，无招胜有招" },
-        { name: "少林长拳", school: "少林", attack: 7, desc: "少林基础拳法，扎实稳重" },
-        { name: "全真剑法", school: "全真", attack: 9, mpCost: 4, desc: "全真派剑法，道家心法，攻守兼备" },
-        { name: "落英神剑掌", school: "桃花岛", attack:11, mpCost:4, desc:"桃花岛独门掌法，缤纷灵动" }
+        { name: "基础拳法", school: "通用", attack: 5, mpCost: 0, desc: "江湖基础拳法" },
+        { name: "太极剑法", school: "武当", attack: 8, mpCost: 3, desc: "武当绝学，以柔克刚" },
+        { name: "降龙十八掌", school: "丐帮", attack: 15, mpCost: 6, desc: "丐帮镇帮之宝" },
+        { name: "独孤九剑", school: "华山", attack: 12, mpCost: 5, desc: "无招胜有招" },
+        { name: "少林长拳", school: "少林", attack: 7, mpCost: 0, desc: "少林基础" },
+        { name: "落英神剑掌", school: "桃花岛", attack: 11, mpCost: 4, desc: "桃花岛独门" },
+        { name: "九阳神功", school: "明教", attack: 20, mpCost: 8, desc: "明教至高内功" },
+        { name: "太玄经", school: "侠客岛", attack: 25, mpCost: 10, desc: "侠客岛绝学" }
     ],
+    // 物品扩充
     items: [
-        { name: "疗伤药", type: "consumable", effect: { hp: 50 }, desc: "恢复50点气血" },
-        { name: "内力丹", type: "consumable", effect: { mp: 30 }, desc: "恢复30点内力" },
-        { name: "武学秘籍（基础）", type: "book", effect: { martial: "基础拳法" }, desc: "学习后掌握基础拳法" },
-        { name: "银两袋", type: "money", effect: { money: 50 }, desc: "获得50两银子" }
-    ]
+        { name: "疗伤药", type: "consumable", effect: { hp: 50 }, desc: "恢复50气血" },
+        { name: "内力丹", type: "consumable", effect: { mp: 30 }, desc: "恢复30内力" },
+        { name: "武学秘籍·基础", type: "book", effect: { martial: "基础拳法" }, desc: "学习基础拳法" },
+        { name: "银两袋", type: "money", effect: { money: 100 }, desc: "获得100两" },
+        { name: "九阴真经", type: "book", effect: { martial: "九阴白骨爪" }, desc: "学会九阴白骨爪" },
+        { name: "九阳神功秘籍", type: "book", effect: { martial: "九阳神功" }, desc: "学会九阳神功" }
+    ],
+    // 敌人数据
+    enemies: {
+        "bandit": { name: "劫匪", hp: 80, attack: 8, defense: 3, exp: 20, money: 30 },
+        "beggar-enemy": { name: "恶丐", hp: 100, attack: 10, defense: 4, exp: 30, money: 50 },
+        "huangyaoshi": { name: "黄药师", hp: 300, attack: 25, defense: 15, exp: 200, money: 500 },
+        "zhangwuji": { name: "张无忌", hp: 500, attack: 30, defense: 20, exp: 300, money: 800 },
+        "xiake-master": { name: "龙木岛主", hp: 800, attack: 40, defense: 25, exp: 500, money: 1000 }
+    }
 };
 
-// -------------------- 新增：打字机效果 --------------------
+// -------------------- 打字机效果 --------------------
 async function typeWrite(dom, text, speed = 25) {
     dom.innerHTML = "";
     for (let i = 0; i < text.length; i++) {
@@ -79,14 +175,18 @@ async function typeWrite(dom, text, speed = 25) {
 }
 
 // -------------------- 弹窗控制 --------------------
-function openCreateCharModal() { document.getElementById("create-char-modal").style.display = "flex"; }
-function closeCreateCharModal() { document.getElementById("create-char-modal").style.display = "none"; }
-function openBagModal() {
-    const modal = document.getElementById("bag-modal");
-    renderBag();
-    modal.style.display = "flex";
+function openCreateCharModal() { playSound("click"); document.getElementById("create-char-modal").style.display = "flex"; }
+function closeCreateCharModal() { playSound("click"); document.getElementById("create-char-modal").style.display = "none"; }
+function openBagModal() { playSound("click"); const modal = document.getElementById("bag-modal"); renderBag(); modal.style.display = "flex"; }
+function closeBagModal() { playSound("click"); document.getElementById("bag-modal").style.display = "none"; }
+function openFightModal(enemy) {
+    playSound("fight");
+    gameData.currentFight = { enemy: {...enemy}, playerHp: gameData.character.hp };
+    document.getElementById("fight-title").textContent = `战斗：${enemy.name}`;
+    renderFightInfo();
+    document.getElementById("fight-modal").style.display = "flex";
 }
-function closeBagModal() { document.getElementById("bag-modal").style.display = "none"; }
+function closeFightModal() { document.getElementById("fight-modal").style.display = "none"; gameData.currentFight = null; }
 
 // 渲染物品栏
 function renderBag() {
@@ -113,12 +213,14 @@ function useItem(index){
     if(!item) return;
     const c = gameData.character;
     if(item.type === "consumable"){
+        playSound("heal");
         if(item.effect.hp) c.hp = Math.min(c.maxHp, c.hp + item.effect.hp);
         if(item.effect.mp) c.mp = Math.min(c.maxMp, c.mp + item.effect.mp);
         addLog(`【${item.name}】使用成功`,"gain");
         c.items.splice(index,1);
     }else if(item.type === "book"){
         if(!c.martialArts.includes(item.effect.martial)){
+            playSound("gain");
             c.martialArts.push(item.effect.martial);
             addLog(`学会武学：${item.effect.martial}`,"gain");
             c.items.splice(index,1);
@@ -131,8 +233,110 @@ function useItem(index){
     saveGame();
 }
 
+// -------------------- 战斗系统 --------------------
+function renderFightInfo() {
+    const f = gameData.currentFight;
+    const info = document.getElementById("fight-info");
+    info.innerHTML = `
+        <p>你：气血 ${gameData.character.hp}/${gameData.character.maxHp}</p>
+        <p>${f.enemy.name}：气血 ${f.enemy.hp}</p>
+    `;
+}
+
+function playerAttack() {
+    const f = gameData.currentFight;
+    const damage = Math.max(1, gameData.character.attack - f.enemy.defense);
+    f.enemy.hp -= damage;
+    addLog(`你攻击${f.enemy.name}，造成${damage}点伤害！`,"event");
+    playSound("hurt");
+    if (f.enemy.hp <= 0) {
+        fightWin();
+        return;
+    }
+    enemyAttack();
+}
+
+function enemyAttack() {
+    const f = gameData.currentFight;
+    const damage = Math.max(1, f.enemy.attack - gameData.character.defense);
+    gameData.character.hp = Math.max(1, gameData.character.hp - damage);
+    addLog(`${f.enemy.name}攻击你，造成${damage}点伤害！`,"warn");
+    playSound("hurt");
+    updateStatusBar();
+    renderFightInfo();
+    if (gameData.character.hp <= 1) {
+        fightLose();
+    }
+}
+
+function fightWin() {
+    const f = gameData.currentFight;
+    addLog(`你战胜了${f.enemy.name}！获得${f.enemy.exp}经验与${f.enemy.money}银两！`,"gain");
+    playSound("gain");
+    gameData.character.money += f.enemy.money;
+    gainExp(f.enemy.exp);
+    closeFightModal();
+    updateStatusBar();
+    saveGame();
+}
+
+function fightLose() {
+    addLog("你被击败了，逃回襄阳城！气血恢复至1点。","warn");
+    playSound("hurt");
+    gameData.character.hp = 1;
+    closeFightModal();
+    gameData.currentScene = "start";
+    renderScene();
+    updateStatusBar();
+    saveGame();
+}
+
+function fleeFight() {
+    playSound("click");
+    addLog("你成功逃跑！","event");
+    closeFightModal();
+}
+
+function useSkill() {
+    // 简化：使用最强武学
+    const skills = gameData.character.martialArts;
+    if (skills.length === 0) { addLog("你没有武学可使用！","warn"); return; }
+    const skill = gameData.martialArts.find(m => m.name === skills[skills.length-1]);
+    if (gameData.character.mp < skill.mpCost) { addLog("内力不足！","warn"); return; }
+    gameData.character.mp -= skill.mpCost;
+    const damage = Math.max(1, skill.attack + gameData.character.attack - gameData.currentFight.enemy.defense);
+    gameData.currentFight.enemy.hp -= damage;
+    addLog(`你使用【${skill.name}】，造成${damage}点伤害！`,"event");
+    playSound("hurt");
+    if (gameData.currentFight.enemy.hp <= 0) fightWin();
+    else enemyAttack();
+    updateStatusBar();
+    renderFightInfo();
+}
+
+function useItemInFight() {
+    openBagModal();
+}
+
+// 经验与升级
+function gainExp(exp) {
+    const c = gameData.character;
+    c.exp = (c.exp || 0) + exp;
+    const needExp = c.level * 100;
+    if (c.exp >= needExp) {
+        c.level++;
+        c.exp -= needExp;
+        c.maxHp += 20; c.hp = c.maxHp;
+        c.maxMp += 10; c.mp = c.maxMp;
+        c.attack += 2; c.defense += 1;
+        addLog(`恭喜你升级到${c.level}级！属性大幅提升！`,"gain");
+        playSound("levelup");
+    }
+}
+
 // -------------------- 存档加载 --------------------
 function initGame() {
+    initSounds();
     const savedData = localStorage.getItem("jinyong-game-data");
     if (savedData) {
         gameData = JSON.parse(savedData);
@@ -142,6 +346,7 @@ function initGame() {
     } else {
         addLog("系统：欢迎来到金庸群侠传文字版，请创建你的角色开始游戏！", "system");
     }
+    bgm.play().catch(e => console.log("BGM自动播放被浏览器阻止，点击音效开关开启"));
 }
 
 function saveGame() {
@@ -157,29 +362,32 @@ function createCharacter() {
 
     gameData.character = {
         name: name,
-        level: 1,
+        level: 1, exp: 0,
         hp: 100, maxHp: 100,
         mp: 50, maxMp: 50,
-        money: 50,
+        money: 100,
         school: school,
         martialArts: [],
         items: [],
         attack: 10, defense: 5
     };
 
+    // 初始武学
     const initialMartial = gameData.martialArts.find(m => m.school === school || m.school === "通用");
     if (initialMartial) {
         gameData.character.martialArts.push(initialMartial.name);
         addLog(`系统：你获得了初始武学【${initialMartial.name}】！`, "system");
     }
+    // 初始物品
     gameData.character.items.push({ ...gameData.items[0] });
-    gameData.character.items.push({ ...gameData.items[3] });
+    gameData.character.items.push({ ...gameData.items[1] });
 
     updateStatusBar();
     renderScene();
     closeCreateCharModal();
     saveGame();
     addLog(`系统：角色【${name}】创建成功！你已拜入${school}门下，开始你的江湖冒险吧！`, "system");
+    playSound("gain");
 }
 
 function updateStatusBar() {
@@ -194,18 +402,19 @@ function updateStatusBar() {
     document.getElementById("char-money").textContent = c.money;
 }
 
+// 场景渲染与交互
 async function renderScene() {
     const scene = gameData.scenes[gameData.currentScene];
     if (!scene) return;
     document.getElementById("scene-title").textContent = scene.title;
-    await typeWrite(document.getElementById("scene-desc"), scene.desc,22);
+    await typeWrite(document.getElementById("scene-desc"), scene.desc, 22);
 
     const optionsList = document.getElementById("options-list");
     optionsList.innerHTML = "";
     scene.options.forEach((option, idx) => {
         const li = document.createElement("li");
         li.textContent = `${idx+1}. ${option.text}`;
-        li.onclick = () => handleOptionClick(option);
+        li.onclick = () => { playSound("click"); handleOptionClick(option); };
         optionsList.appendChild(li);
     });
 }
@@ -213,65 +422,76 @@ async function renderScene() {
 function handleOptionClick(option) {
     if (option.cost) {
         if (option.cost.money && gameData.character.money < option.cost.money) {
-            addLog("系统：你的银两不足，无法执行此操作！", "system");
+            addLog("系统：银两不足！", "system");
             return;
         }
-        if (option.cost.money) gameData.character.money -= option.cost.money;
+        gameData.character.money -= option.cost.money;
     }
 
+    // 场景逻辑
     switch (gameData.currentScene) {
         case "inn":
             if (option.nextScene === "inn-eat") {
                 gameData.character.hp = Math.min(gameData.character.maxHp, gameData.character.hp + 30);
                 gameData.character.mp = Math.min(gameData.character.maxMp, gameData.character.mp + 20);
-                addLog("系统：你在客栈休息了一番，恢复了30点气血和20点内力。", "event");
-            } else if (option.nextScene === "inn-ask") {
-                addLog("店小二：客官，最近江湖上流传着一个消息，说是华山派的独孤九剑秘籍遗失了，各大门派都在寻找呢！", "dialog");
-            } else if (option.nextScene === "inn-friend") {
-                addLog("系统：你在客栈遇到了一位志同道合的少侠，你们相约一起探索江湖。", "event");
+                addLog("系统：你恢复了30气血、20内力。", "event");
+                playSound("heal");
             }
             break;
         case "martial-hall":
             if (option.nextScene === "martial-learn") {
                 gameData.character.attack += 3;
-                addLog("系统：你向武馆馆主学习了基础拳法，攻击力提升了3点！", "event");
+                addLog("系统：攻击力+3！", "event");
             } else if (option.nextScene === "martial-fight") {
-                const win = Math.random() > 0.5;
-                if (win) {
-                    gameData.character.hp = Math.max(1, gameData.character.hp - 10);
-                    addLog("系统：你与武馆弟子切磋，险胜一招，消耗了10点气血。", "event");
-                } else {
-                    gameData.character.hp = Math.max(1, gameData.character.hp - 20);
-                    addLog("系统：你与武馆弟子切磋，不慎落败，消耗了20点气血。", "event");
-                }
-            } else if (option.nextScene === "martial-ask") {
-                addLog("馆主：少侠，江湖武学博大精深，唯有勤加练习，方能有所成就。各大门派的绝学各有千秋，你可根据自身特点选择适合自己的武学。", "dialog");
+                openFightModal(gameData.enemies.bandit);
+                return;
             }
             break;
         case "beggar-talk":
             if (option.nextScene === "beggar-accept") {
-                const martialBook = gameData.items.find(item => item.type === "book");
-                gameData.character.items.push(martialBook);
-                addLog(`系统：你获得了【${martialBook.name}】，可在物品栏中使用学习。`, "gain");
-            } else if (option.nextScene === "beggar-ask-task") {
-                addLog("老者：老夫的任务很简单，就是帮老夫找回被野狗叼走的钱袋，钱袋就在城外的树林里。", "dialog");
+                gameData.character.martialArts.push("降龙十八掌");
+                addLog("系统：你学会【降龙十八掌】！", "gain");
+                playSound("gain");
             }
             break;
         case "wilderness":
             if (option.nextScene === "wilderness-explore") {
                 const rand = Math.random();
                 if (rand < 0.3) {
-                    const item = gameData.items[Math.floor(Math.random() * gameData.items.length)];
+                    const item = gameData.items[Math.floor(Math.random()*gameData.items.length)];
                     gameData.character.items.push(item);
-                    addLog(`系统：你在树林中发现了【${item.name}】！`, "gain");
-                } else if (rand < 0.6) {
-                    addLog("系统：你遭遇了一群野狗，经过一番搏斗，成功击退了它们，但消耗了30点气血。", "warn");
-                    gameData.character.hp = Math.max(1, gameData.character.hp - 30);
-                } else {
-                    addLog("系统：你在树林中探索了一番，没有发现什么特别的东西。", "event");
+                    addLog(`获得【${item.name}】！`,"gain");
+                    playSound("gain");
+                } else if (rand < 0.7) {
+                    openFightModal(gameData.enemies.bandit);
+                    return;
                 }
-            } else if (option.nextScene === "wilderness-careful") {
-                addLog("系统：你小心翼翼地前行，避开了可疑的人影，安全返回了城门口。", "event");
+            }
+            break;
+        case "taohua-island":
+            if (option.nextScene === "taohua-fight") {
+                openFightModal(gameData.enemies.huangyaoshi);
+                return;
+            } else if (option.nextScene === "taohua-search") {
+                gameData.character.items.push({...gameData.items.find(i=>i.name==="九阴真经")});
+                addLog("找到【九阴真经】！","gain");
+                playSound("gain");
+            }
+            break;
+        case "mingding-top":
+            if (option.nextScene.includes("help")) {
+                openFightModal(option.nextScene==="mingding-help-mingjiao"?gameData.enemies.zhangwuji:gameData.enemies.huangyaoshi);
+                return;
+            }
+            break;
+        case "xiake-island":
+            if (option.nextScene === "xiake-study") {
+                gameData.character.martialArts.push("太玄经");
+                addLog("参悟【太玄经】成功！","gain");
+                playSound("gain");
+            } else if (option.nextScene === "xiake-fight") {
+                openFightModal(gameData.enemies.xiake-master);
+                return;
             }
             break;
     }
@@ -291,10 +511,10 @@ function addLog(message, type = "system") {
     logArea.scrollTop = logArea.scrollHeight;
 }
 
-// 键盘快捷键
+// 快捷键
 document.addEventListener("keydown", function(e){
-    if(e.key.toLowerCase() === "s") saveGame();
-    if(e.key.toLowerCase() === "b") openBagModal();
+    if(e.key.toLowerCase() === "s") { playSound("click"); saveGame(); }
+    if(e.key.toLowerCase() === "b") { playSound("click"); openBagModal(); }
 });
 
 window.onload = initGame;
