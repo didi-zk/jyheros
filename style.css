@@ -916,12 +916,12 @@ h1 {
     text-align: center;
     color: #8b0000;
     font-size: 0.9rem;
-    animation: blink 1.2s infinite;
+    animation: dialogBlink 1.2s infinite;
     cursor: pointer;
     user-select: none;
 }
 
-@keyframes blink {
+@keyframes dialogBlink {
 
     0%,
     50% {

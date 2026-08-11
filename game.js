@@ -30,7 +30,7 @@ function dismissUpdateBanner() {
         .then(data => {
             if (data.version) localStorage.setItem("jyheros_known_version", data.version);
         })
-        .catch(() => {});
+        .catch(() => { });
 }
 
 // ========== 游戏全局数据 ==========
@@ -170,7 +170,7 @@ const gameData = {
             { id: 6, name: "连城诀", maxStage: 0 },
             { id: 7, name: "天龙八部", maxStage: 0 },
             { id: 8, name: "侠客行", maxStage: 0 },
-            { id: 9, name: "笑傲江湖", maxStage: 0 },
+            { id: 9, name: "越女剑", maxStage: 0 },
             { id: 10, name: "鹿鼎记", maxStage: 0 },
             { id: 11, name: "书剑恩仇录", maxStage: 0 },
             { id: 12, name: "碧血剑", maxStage: 0 },
@@ -489,6 +489,9 @@ async function renderScene() {
         li.innerText = "创建角色";
         li.onclick = openCreateCharModal;
         optionsListEl.appendChild(li);
+    }
+    if (gameData.character) {
+        checkQuestTrigger(gameData.currentScene);
     }
     updateStatusBar();
     _rendering = false;
@@ -1060,7 +1063,7 @@ function checkLevelUp() {
         char.hp = char.maxHp;
         char.mp = char.maxMp;
         addLog(`🎉 恭喜！你升到了【${char.level}级】！气血+15，内力+8，攻击+2，防御+1，气血内力全满！`, "system");
-        playSound("leavel up");
+        playSound("level up");
     }
     updateStatusBar();
     saveGame();
@@ -1247,7 +1250,6 @@ function openDialog(dialogId, onComplete) {
     dialogSystem.currentNode = dialog.nodes.start;
     dialogSystem.onComplete = onComplete || null;
     dialogSystem.isTyping = false;
-    _actionBusy = false;
 
     const overlay = document.getElementById("dialog-overlay");
     const avatar = document.getElementById("dialog-avatar");
@@ -1576,64 +1578,41 @@ function useItemByIndex(idx, useCount) {
     if (!useCount || useCount < 1) useCount = 1;
     if (useCount > it.count) useCount = it.count;
 
+    if (it.type === "hp" && char.hp >= char.maxHp) {
+        addLog("你气血已满，无需使用此物品。");
+        if (gameData.inBattle) restoreFightOptions();
+        return;
+    }
+    if (it.type === "mp" && char.mp >= char.maxMp) {
+        addLog("你内力已满，无需使用此物品。");
+        if (gameData.inBattle) restoreFightOptions();
+        return;
+    }
+
+    if (it.type === "hp") {
+        const missing = char.maxHp - char.hp;
+        const actualUsed = Math.min(useCount, Math.ceil(missing / it.value));
+        const totalRestore = Math.min(it.value * actualUsed, missing);
+        char.hp += totalRestore;
+        addLog(`你使用了【${it.name}】×${actualUsed}，恢复${totalRestore}点气血！`);
+        it.count -= actualUsed;
+    } else if (it.type === "mp") {
+        const missing = char.maxMp - char.mp;
+        const actualUsed = Math.min(useCount, Math.ceil(missing / it.value));
+        const totalRestore = Math.min(it.value * actualUsed, missing);
+        char.mp += totalRestore;
+        addLog(`你使用了【${it.name}】×${actualUsed}，恢复${totalRestore}点内力！`);
+        it.count -= actualUsed;
+    }
+    char.items = char.items.filter(i => i.count > 0);
+    playSound("heal");
+
     if (gameData.inBattle) {
-        if (it.type === "hp" && char.hp >= char.maxHp) {
-            addLog("你气血已满，无需使用此物品。");
-            restoreFightOptions();
-            return;
-        }
-        if (it.type === "mp" && char.mp >= char.maxMp) {
-            addLog("你内力已满，无需使用此物品。");
-            restoreFightOptions();
-            return;
-        }
-        if (it.type === "hp") {
-            const missing = char.maxHp - char.hp;
-            const actualUsed = Math.min(useCount, Math.ceil(missing / it.value));
-            const totalRestore = Math.min(it.value * actualUsed, missing);
-            char.hp += totalRestore;
-            addLog(`你使用了【${it.name}】×${actualUsed}，恢复${totalRestore}点气血！`);
-            it.count -= actualUsed;
-        } else if (it.type === "mp") {
-            const missing = char.maxMp - char.mp;
-            const actualUsed = Math.min(useCount, Math.ceil(missing / it.value));
-            const totalRestore = Math.min(it.value * actualUsed, missing);
-            char.mp += totalRestore;
-            addLog(`你使用了【${it.name}】×${actualUsed}，恢复${totalRestore}点内力！`);
-            it.count -= actualUsed;
-        }
-        char.items = char.items.filter(i => i.count > 0);
-        playSound("heal");
         updateFightInfo();
         updateStatusBar();
         enemyTurn();
         restoreFightOptions();
     } else {
-        if (it.type === "hp" && char.hp >= char.maxHp) {
-            addLog("你气血已满，无需使用此物品。");
-            return;
-        }
-        if (it.type === "mp" && char.mp >= char.maxMp) {
-            addLog("你内力已满，无需使用此物品。");
-            return;
-        }
-        if (it.type === "hp") {
-            const missing = char.maxHp - char.hp;
-            const actualUsed = Math.min(useCount, Math.ceil(missing / it.value));
-            const totalRestore = Math.min(it.value * actualUsed, missing);
-            char.hp += totalRestore;
-            addLog(`你使用了【${it.name}】×${actualUsed}，恢复${totalRestore}点气血！`);
-            it.count -= actualUsed;
-        } else if (it.type === "mp") {
-            const missing = char.maxMp - char.mp;
-            const actualUsed = Math.min(useCount, Math.ceil(missing / it.value));
-            const totalRestore = Math.min(it.value * actualUsed, missing);
-            char.mp += totalRestore;
-            addLog(`你使用了【${it.name}】×${actualUsed}，恢复${totalRestore}点内力！`);
-            it.count -= actualUsed;
-        }
-        char.items = char.items.filter(i => i.count > 0);
-        playSound("heal");
         updateStatusBar();
         saveGame();
         renderScene();
@@ -1658,7 +1637,15 @@ function fleeFight() {
 }
 // ========== 存档本地存储 ==========
 function saveGame() {
-    try { localStorage.setItem("jinyong-game-data", JSON.stringify(gameData)); } catch (e) { }
+    try {
+        const saveData = {
+            character: gameData.character,
+            currentScene: gameData.currentScene,
+            quests: gameData.quests,
+            _battleStarted: gameData._battleStarted
+        };
+        localStorage.setItem("jinyong-game-data", JSON.stringify(saveData));
+    } catch (e) { }
 }
 
 function safeReload() {
@@ -1671,7 +1658,7 @@ function safeReload() {
         .then(data => {
             if (data.version) localStorage.setItem("jyheros_known_version", data.version);
         })
-        .catch(() => {})
+        .catch(() => { })
         .finally(() => {
             saveGame();
             const url = new URL(window.location.href);
@@ -1693,7 +1680,16 @@ function newGame() {
         currentMain: 0,
         completedMains: [],
         sideFlags: {},
-        choices: {}
+        choices: {},
+        guoJingMet: false,
+        stage2Done: false,
+        stage3Done: false,
+        stage4Done: false,
+        stage5Done: false,
+        stage6Done: false,
+        stage7Done: false,
+        stage8Done: false,
+        stage8Ready: false
     };
     if (logBoxEl) logBoxEl.innerHTML = "";
     document.getElementById("char-name").innerText = "未创建";
@@ -1735,10 +1731,10 @@ function loadGame() {
                 }
                 if (!gameData.character.realStart) {
                     gameData.character.realStart = Date.now();
-                    gameData.character.gameYear = 1;
-                    gameData.character.gameMonth = 1 + Math.floor(Math.random() * 12);
-                    gameData.character.gameDay = 1 + Math.floor(Math.random() * 30);
                 }
+                if (gameData.character.gameYear === undefined) gameData.character.gameYear = 1;
+                if (gameData.character.gameMonth === undefined) gameData.character.gameMonth = 1 + Math.floor(Math.random() * 12);
+                if (gameData.character.gameDay === undefined) gameData.character.gameDay = 1 + Math.floor(Math.random() * 30);
                 if (gameData.character.avatar === undefined) {
                     gameData.character.avatar = Math.floor(Math.random() * 6);
                 }
@@ -1755,6 +1751,12 @@ function loadGame() {
                         gameData.quests[stageKey] = true;
                     }
                 }
+                if (gameData.quests.guoJingMet === undefined) gameData.quests.guoJingMet = false;
+                for (let i = 2; i <= 8; i++) {
+                    const sk = "stage" + i + "Done";
+                    if (gameData.quests[sk] === undefined) gameData.quests[sk] = false;
+                }
+                if (gameData.quests.stage8Ready === undefined) gameData.quests.stage8Ready = false;
                 addLog("系统：已加载存档，欢迎继续你的江湖之旅！", "system");
             }
         }
@@ -1899,8 +1901,10 @@ function advanceMainStage() {
     const stageKey = "stage" + nextStage + "Done";
     q[stageKey] = true;
 
-    const stageReadyKey = "stage" + (nextStage + 1) + "Ready";
-    q[stageReadyKey] = true;
+    if (nextStage < sDiao.length) {
+        const stageReadyKey = "stage" + (nextStage + 1) + "Ready";
+        q[stageReadyKey] = true;
+    }
 
     q.currentMain = nextStage;
 
