@@ -1,20 +1,36 @@
 // ========== 游戏版本 ==========
-const GAME_VERSION = "v1.0.0";
+const GAME_VERSION = "v1.0.2";
 
-async function checkForUpdates() {
+async function checkForUpdates(manual) {
     try {
         const res = await fetch(`./version.json?t=${Date.now()}`);
-        if (!res.ok) return;
+        if (!res.ok) { if (manual) addLog("无法检查更新，请检查网络连接。", "system"); return; }
         const data = await res.json();
-        if (data.version && data.version !== GAME_VERSION) {
+        if (!data.version) return;
+        const known = localStorage.getItem("jyheros_known_version");
+        if (data.version !== known) {
             const banner = document.getElementById("update-banner");
             const verEl = document.getElementById("new-version");
             if (banner && verEl) {
                 verEl.innerText = data.version;
                 banner.style.display = "flex";
             }
+            if (manual) addLog(`检测到新版本 ${data.version}，请刷新页面获取更新。`, "system");
+        } else if (manual) {
+            addLog(`当前已是最新版本 ${GAME_VERSION}`, "system");
         }
-    } catch (e) { }
+    } catch (e) { if (manual) addLog("检查更新失败，请稍后重试。", "system"); }
+}
+
+function dismissUpdateBanner() {
+    const banner = document.getElementById("update-banner");
+    if (banner) banner.style.display = "none";
+    fetch(`./version.json?t=${Date.now()}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.version) localStorage.setItem("jyheros_known_version", data.version);
+        })
+        .catch(() => {});
 }
 
 // ========== 游戏全局数据 ==========
@@ -23,6 +39,7 @@ const gameData = {
     currentScene: "start",
     inBattle: false,
     enemy: null,
+    _battleStarted: false,
     scenes: {
         start: {
             title: "襄阳城门",
@@ -1155,6 +1172,8 @@ function showBag() {
 // ========== 战斗系统 ==========
 function startBattle() {
     gameData.inBattle = true;
+    gameData._battleStarted = true;
+    window.addEventListener("beforeunload", preventReload);
     const randIdx = Math.floor(Math.random() * gameData.enemyList.length);
     gameData.enemy = { ...gameData.enemyList[randIdx] };
     const e = gameData.enemy;
@@ -1163,6 +1182,14 @@ function startBattle() {
     const modal = document.getElementById("fight-modal");
     if (modal) modal.style.display = "flex";
     updateFightInfo();
+    saveGame();
+}
+
+function preventReload(e) {
+    if (gameData.inBattle) {
+        e.preventDefault();
+        e.returnValue = "战斗中无法刷新页面！";
+    }
 }
 
 function updateFightInfo() {
@@ -1186,11 +1213,14 @@ function updateFightInfo() {
 function endBattle(victory) {
     gameData.inBattle = false;
     gameData.enemy = null;
+    gameData._battleStarted = false;
+    window.removeEventListener("beforeunload", preventReload);
     const modal = document.getElementById("fight-modal");
     if (modal) modal.style.display = "none";
     if (victory) {
         gameData.currentScene = "wild";
     }
+    saveGame();
     renderScene();
 }
 
@@ -1420,6 +1450,25 @@ function saveGame() {
     try { localStorage.setItem("jinyong-game-data", JSON.stringify(gameData)); } catch (e) { }
 }
 
+function safeReload() {
+    if (gameData.inBattle) {
+        addLog("战斗中无法刷新，请先结束战斗！", "system");
+        return;
+    }
+    fetch(`./version.json?t=${Date.now()}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.version) localStorage.setItem("jyheros_known_version", data.version);
+        })
+        .catch(() => {})
+        .finally(() => {
+            saveGame();
+            const url = new URL(window.location.href);
+            url.searchParams.set("_t", Date.now());
+            location.replace(url.toString());
+        });
+}
+
 function newGame() {
     if (!confirm("确定要开启新游戏吗？当前存档将被清除！")) return;
     localStorage.removeItem("jinyong-game-data");
@@ -1427,6 +1476,8 @@ function newGame() {
     gameData.currentScene = "start";
     gameData.inBattle = false;
     gameData.enemy = null;
+    gameData._battleStarted = false;
+    window.removeEventListener("beforeunload", preventReload);
     gameData.quests = {
         currentMain: 0,
         completedMains: [],
@@ -1460,9 +1511,17 @@ function loadGame() {
             gameData.character = saved.character;
             gameData.currentScene = saved.currentScene ?? "start";
             gameData.quests = saved.quests || gameData.quests;
-            gameData.inBattle = saved.inBattle || false;
-            gameData.enemy = saved.enemy || null;
+            gameData.inBattle = false;
+            gameData.enemy = null;
+            gameData._battleStarted = saved._battleStarted || false;
             if (gameData.character) {
+                if (gameData._battleStarted) {
+                    const penalty = Math.floor(gameData.character.maxHp * 0.2);
+                    gameData.character.hp = Math.max(1, gameData.character.hp - penalty);
+                    gameData.character.mp = Math.max(0, gameData.character.mp - Math.floor(gameData.character.maxMp * 0.1));
+                    addLog(`战斗中断！你强行逃离战斗，损失了${penalty}点气血和部分内力。`, "event");
+                    gameData._battleStarted = false;
+                }
                 if (!gameData.character.realStart) {
                     gameData.character.realStart = Date.now();
                     gameData.character.gameYear = 1;
@@ -1495,8 +1554,17 @@ function loadGame() {
 window.onload = function () {
     loadGame();
     renderScene();
-    const verEl = document.getElementById("menu-version");
-    if (verEl) verEl.innerText = GAME_VERSION;
+    fetch(`./version.json?t=${Date.now()}`)
+        .then(r => r.json())
+        .then(data => {
+            const verEl = document.getElementById("menu-version");
+            if (verEl && data.version) verEl.innerText = data.version;
+        })
+        .catch(() => {
+            const verEl = document.getElementById("menu-version");
+            if (verEl) verEl.innerText = GAME_VERSION;
+        });
+    checkForUpdates();
     try {
         bgmAudio = new Audio('./sounds/bgm.mp3');
         bgmAudio.volume = globalVolume * 0.5;
