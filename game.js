@@ -1,3 +1,22 @@
+// ========== 游戏版本 ==========
+const GAME_VERSION = "v1.0.0";
+
+async function checkForUpdates() {
+    try {
+        const res = await fetch(`./version.json?t=${Date.now()}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.version && data.version !== GAME_VERSION) {
+            const banner = document.getElementById("update-banner");
+            const verEl = document.getElementById("new-version");
+            if (banner && verEl) {
+                verEl.innerText = data.version;
+                banner.style.display = "flex";
+            }
+        }
+    } catch (e) { }
+}
+
 // ========== 游戏全局数据 ==========
 const gameData = {
     character: null,
@@ -1476,7 +1495,8 @@ function loadGame() {
 window.onload = function () {
     loadGame();
     renderScene();
-    // 加载默认背景音乐（默认暂停，用户点BGM开关后播放）
+    const verEl = document.getElementById("menu-version");
+    if (verEl) verEl.innerText = GAME_VERSION;
     try {
         bgmAudio = new Audio('./sounds/bgm.mp3');
         bgmAudio.volume = globalVolume * 0.5;
