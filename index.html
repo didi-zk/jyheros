@@ -207,6 +207,22 @@
         <button class="btn btn-cancel" onclick="dismissUpdateBanner()">稍后</button>
     </div>
 
+    <!-- 对话系统 -->
+    <div class="dialog-overlay" id="dialog-overlay" style="display:none;"
+        onclick="if(event.target===this)advanceDialog()">
+        <div class="dialog-box" id="dialog-box">
+            <div class="dialog-header">
+                <div class="dialog-avatar" id="dialog-avatar">🤠</div>
+                <div class="dialog-name" id="dialog-name">NPC</div>
+            </div>
+            <div class="dialog-content dialog-typing" id="dialog-content"
+                onclick="if(dialogSystem.isTyping)skipTyping()"></div>
+            <div class="dialog-options" id="dialog-options"></div>
+            <div class="dialog-continue" id="dialog-continue" style="display:none;" onclick="advanceDialog()">▼ 点击继续 ▼
+            </div>
+        </div>
+    </div>
+
     <script src="./game.js?v=1.0.3"></script>
 </body>
 
