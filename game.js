@@ -1,5 +1,5 @@
 // ========== 游戏版本 ==========
-const GAME_VERSION = "v1.0.3";
+const GAME_VERSION = "v1.0.4";
 
 async function checkForUpdates(manual) {
     try {
@@ -124,12 +124,12 @@ const gameData = {
         { name: "落英神剑掌", school: "桃花岛", damage: 19 }
     ],
     schoolBonuses: {
-        "少林": { hpBonus: 30, mpBonus: 0, atkBonus: 0, defBonus: 3 },
-        "武当": { hpBonus: 0, mpBonus: 30, atkBonus: 1, defBonus: 2 },
-        "丐帮": { hpBonus: 10, mpBonus: 0, atkBonus: 4, defBonus: 0 },
-        "华山": { hpBonus: 0, mpBonus: 10, atkBonus: 5, defBonus: 1 },
-        "全真": { hpBonus: 10, mpBonus: 20, atkBonus: 2, defBonus: 2 },
-        "桃花岛": { hpBonus: 0, mpBonus: 25, atkBonus: 3, defBonus: 1 }
+        "少林": { hpBonus: 30, mpBonus: 0, atkBonus: 0, defBonus: 3, dodgeBonus: 2, critBonus: 1 },
+        "武当": { hpBonus: 0, mpBonus: 30, atkBonus: 1, defBonus: 2, dodgeBonus: 3, critBonus: 1 },
+        "丐帮": { hpBonus: 10, mpBonus: 0, atkBonus: 4, defBonus: 0, dodgeBonus: 1, critBonus: 3 },
+        "华山": { hpBonus: 0, mpBonus: 10, atkBonus: 5, defBonus: 1, dodgeBonus: 2, critBonus: 4 },
+        "全真": { hpBonus: 10, mpBonus: 20, atkBonus: 2, defBonus: 2, dodgeBonus: 2, critBonus: 2 },
+        "桃花岛": { hpBonus: 0, mpBonus: 25, atkBonus: 3, defBonus: 1, dodgeBonus: 4, critBonus: 2 }
     },
     items: [
         { name: "金疮药", desc: "恢复40气血", type: "hp", value: 40, count: 1 },
@@ -144,7 +144,9 @@ const gameData = {
         { name: "铁布衫", desc: "永久增加3点防御", type: "def", value: 3, price: 60, maxLimit: 1 },
         { name: "攻击秘籍", desc: "永久增加2点攻击", type: "atk", value: 2, price: 180, maxLimit: 3 },
         { name: "内力心法", desc: "永久增加20最大内力", type: "maxmp", value: 20, price: 150, maxLimit: 3 },
-        { name: "强身健体", desc: "永久增加30最大气血", type: "maxhp", value: 30, price: 150, maxLimit: 3 }
+        { name: "强身健体", desc: "永久增加30最大气血", type: "maxhp", value: 30, price: 150, maxLimit: 3 },
+        { name: "轻身步法", desc: "永久增加3%闪避", type: "dodge", value: 3, price: 100, maxLimit: 3 },
+        { name: "暴击秘籍", desc: "永久增加3%暴击", type: "crit", value: 3, price: 120, maxLimit: 3 }
     ],
     enemyList: [
         { name: "山贼", hp: 60, maxHp: 60, attack: 8, defense: 2, money: 30, exp: 20 },
@@ -819,6 +821,8 @@ function renderShopList() {
             else if (item.type === "atk") purchased = char.boughtAtk || 0;
             else if (item.type === "maxmp") purchased = char.boughtMaxMp || 0;
             else if (item.type === "maxhp") purchased = char.boughtMaxHp || 0;
+            else if (item.type === "dodge") purchased = char.boughtDodge || 0;
+            else if (item.type === "crit") purchased = char.boughtCrit || 0;
         }
         const remaining = item.maxLimit > 0 ? item.maxLimit - purchased : -1;
         const soldOut = item.maxLimit > 0 && remaining <= 0;
@@ -882,6 +886,8 @@ function shopBuy(key, idx) {
         else if (item.type === "atk") purchased = char.boughtAtk || 0;
         else if (item.type === "maxmp") purchased = char.boughtMaxMp || 0;
         else if (item.type === "maxhp") purchased = char.boughtMaxHp || 0;
+        else if (item.type === "dodge") purchased = char.boughtDodge || 0;
+        else if (item.type === "crit") purchased = char.boughtCrit || 0;
         const remaining = item.maxLimit - purchased;
         if (remaining <= 0) {
             addLog(`【${item.name}】已购完！`, "event");
@@ -921,6 +927,14 @@ function shopBuy(key, idx) {
         char.hp += item.value * qty;
         char.boughtMaxHp = (char.boughtMaxHp || 0) + qty;
         addLog(`你修炼了【${item.name}】×${qty}，最大气血永久+${item.value * qty}！`, "event");
+    } else if (item.type === "dodge") {
+        char.dodge = (char.dodge || 5) + item.value * qty;
+        char.boughtDodge = (char.boughtDodge || 0) + qty;
+        addLog(`你修炼了【${item.name}】×${qty}，闪避永久+${item.value * qty}%！`, "event");
+    } else if (item.type === "crit") {
+        char.crit = (char.crit || 5) + item.value * qty;
+        char.boughtCrit = (char.boughtCrit || 0) + qty;
+        addLog(`你修炼了【${item.name}】×${qty}，暴击永久+${item.value * qty}%！`, "event");
     } else {
         const existing = char.items.find(i => i.name === item.name);
         if (existing) {
@@ -961,6 +975,8 @@ function createCharacter() {
     const mpBonus = bonus.mpBonus || 0;
     const atkBonus = bonus.atkBonus || 0;
     const defBonus = bonus.defBonus || 0;
+    const dodgeBonus = bonus.dodgeBonus || 0;
+    const critBonus = bonus.critBonus || 0;
 
     gameData.character = {
         name: name,
@@ -976,6 +992,8 @@ function createCharacter() {
         ],
         attack: 10 + atkBonus,
         defense: 5 + defBonus,
+        dodge: 5 + dodgeBonus,
+        crit: 5 + critBonus,
         realStart: Date.now(),
         gameYear: 1,
         gameMonth: 1 + Math.floor(Math.random() * 12),
@@ -1060,9 +1078,11 @@ function checkLevelUp() {
         char.maxMp += 8;
         char.attack += 2;
         char.defense += 1;
+        char.dodge = (char.dodge || 5) + 0.5;
+        char.crit = (char.crit || 5) + 0.5;
         char.hp = char.maxHp;
         char.mp = char.maxMp;
-        addLog(`🎉 恭喜！你升到了【${char.level}级】！气血+15，内力+8，攻击+2，防御+1，气血内力全满！`, "system");
+        addLog(`🎉 恭喜！你升到了【${char.level}级】！气血+15，内力+8，攻击+2，防御+1，闪避+0.5%，暴击+0.5%，气血内力全满！`, "system");
         playSound("level up");
     }
     updateStatusBar();
@@ -1078,6 +1098,8 @@ function updateStatusBar() {
     const avatarEl = document.getElementById("char-avatar");
     const atkEl = document.getElementById("char-atk");
     const defEl = document.getElementById("char-def");
+    const dodgeEl = document.getElementById("char-dodge");
+    const critEl = document.getElementById("char-crit");
     const dateEl = document.getElementById("char-date");
     const levelEl = document.getElementById("char-level");
     const hpEl = document.getElementById("char-hp");
@@ -1095,6 +1117,8 @@ function updateStatusBar() {
         if (avatarEl) avatarEl.innerText = "❓";
         if (atkEl) atkEl.innerText = "0";
         if (defEl) defEl.innerText = "0";
+        if (dodgeEl) dodgeEl.innerText = "0";
+        if (critEl) critEl.innerText = "0";
         if (levelEl) levelEl.innerText = "1";
         if (hpEl) hpEl.innerText = "0";
         if (maxHpEl) maxHpEl.innerText = "0";
@@ -1121,6 +1145,8 @@ function updateStatusBar() {
     if (maxExpEl) maxExpEl.innerText = c.maxExp;
     if (atkEl) atkEl.innerText = c.attack;
     if (defEl) defEl.innerText = c.defense;
+    if (dodgeEl) dodgeEl.innerText = (c.dodge || 5).toFixed(1);
+    if (critEl) critEl.innerText = (c.crit || 5).toFixed(1);
     if (hpBar) hpBar.style.width = (c.maxHp > 0 ? (c.hp / c.maxHp * 100) : 0) + "%";
     if (mpBar) mpBar.style.width = (c.maxMp > 0 ? (c.mp / c.maxMp * 100) : 0) + "%";
 }
@@ -1442,6 +1468,14 @@ function enemyTurn() {
     const char = gameData.character;
     const enemy = gameData.enemy;
     if (!char || !enemy) return;
+    const dodgeChance = char.dodge || 5;
+    if (Math.random() * 100 < dodgeChance) {
+        addLog(`💨 你身法灵动，成功闪避了${enemy.name}的攻击！`);
+        playSound("click");
+        updateFightInfo();
+        updateStatusBar();
+        return;
+    }
     let eDmg = Math.max(1, enemy.attack - char.defense);
     eDmg = eDmg + Math.floor(Math.random() * 3);
     char.hp -= eDmg;
@@ -1463,10 +1497,17 @@ function playerAttack() {
     const char = gameData.character;
     const enemy = gameData.enemy;
     if (!char || !enemy) return;
+    const isCrit = Math.random() * 100 < (char.crit || 5);
     let dmg = Math.max(1, char.attack - enemy.defense);
     dmg = dmg + Math.floor(Math.random() * 5);
-    enemy.hp -= dmg;
-    addLog(`你发起普通攻击，对${enemy.name}造成${dmg}点伤害！`);
+    if (isCrit) {
+        dmg = Math.floor(dmg * 2);
+        enemy.hp -= dmg;
+        addLog(`💥 暴击！你发起普通攻击，对${enemy.name}造成${dmg}点伤害！`);
+    } else {
+        enemy.hp -= dmg;
+        addLog(`你发起普通攻击，对${enemy.name}造成${dmg}点伤害！`);
+    }
     playSound("hurt");
     updateFightInfo();
     if (enemy.hp <= 0) {
@@ -1499,10 +1540,17 @@ function useSkill() {
         return;
     }
     char.mp -= mpCost;
+    const isCrit = Math.random() * 100 < (char.crit || 5);
     let dmg = (wuObj?.damage ?? 12) + char.attack - enemy.defense;
     dmg = Math.max(1, dmg);
-    enemy.hp -= dmg;
-    addLog(`你使出【${wuName}】，造成${dmg}点伤害！`);
+    if (isCrit) {
+        dmg = Math.floor(dmg * 2);
+        enemy.hp -= dmg;
+        addLog(`💥 暴击！你使出【${wuName}】，造成${dmg}点伤害！`);
+    } else {
+        enemy.hp -= dmg;
+        addLog(`你使出【${wuName}】，造成${dmg}点伤害！`);
+    }
     playSound("hurt");
     updateFightInfo();
     updateStatusBar();
@@ -1704,6 +1752,8 @@ function newGame() {
     document.getElementById("char-max-mp").innerText = "50";
     document.getElementById("char-atk").innerText = "10";
     document.getElementById("char-def").innerText = "5";
+    document.getElementById("char-dodge").innerText = "5";
+    document.getElementById("char-crit").innerText = "5";
     document.getElementById("char-money").innerText = "0";
     document.getElementById("char-avatar").innerText = "🗡️";
     addLog("系统：已开启新游戏，请创建角色。", "system");
@@ -1745,6 +1795,10 @@ function loadGame() {
                 if (gameData.character.boughtMaxMp === undefined) gameData.character.boughtMaxMp = 0;
                 if (gameData.character.boughtMaxHp === undefined) gameData.character.boughtMaxHp = 0;
                 if (gameData.character.boughtIronCloth === undefined) gameData.character.boughtIronCloth = false;
+                if (gameData.character.dodge === undefined) gameData.character.dodge = 5;
+                if (gameData.character.crit === undefined) gameData.character.crit = 5;
+                if (gameData.character.boughtDodge === undefined) gameData.character.boughtDodge = 0;
+                if (gameData.character.boughtCrit === undefined) gameData.character.boughtCrit = 0;
                 if (gameData.quests.currentMain > 0) {
                     const stageKey = "stage" + gameData.quests.currentMain + "Done";
                     if (gameData.quests[stageKey] === undefined) {

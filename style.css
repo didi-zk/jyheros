@@ -173,7 +173,7 @@ h1 {
 .char-attr-row {
     flex: 0 1 auto;
     display: grid;
-    grid-template-columns: repeat(3, auto);
+    grid-template-columns: repeat(5, auto);
     gap: 4px 16px;
     align-content: start;
     padding-left: 20px;
