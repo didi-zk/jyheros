@@ -201,7 +201,7 @@
     <!-- 更新通知栏 -->
     <div id="update-banner" style="display:none;">
         <span>📢 发现新版本 <strong id="new-version"></strong>，建议刷新页面获取更新</span>
-        <button class="btn" onclick="location.reload()" style="margin-left:10px;">立即刷新</button>
+        <button class="btn" onclick="safeReload()" style="margin-left:10px;">立即刷新</button>
         <button class="btn btn-cancel"
             onclick="document.getElementById('update-banner').style.display='none'">稍后</button>
     </div>
