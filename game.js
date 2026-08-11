@@ -143,7 +143,7 @@ const gameData = {
             {
                 stage: 1,
                 title: "少年杨过",
-                desc: "酒馆内，一位忠厚老实的中年人正是郭靖郭大侠。他告诉你，一位叫杨过的少年流落江湖，需要有人相助。",
+                desc: "酒馆内的角落里坐着一位忠厚老实的中年人，正是郭靖郭大侠。他告诉你，一位叫杨过的少年流落江湖，需要有人相助。",
                 target: "前往酒馆找郭靖",
                 trigger: function (gd) { return gd.character && gd.character.level >= 3 && gd.quests.currentMain === 0; },
                 isDone: function (gd) { return gd.quests.currentMain >= 1; },
@@ -1414,6 +1414,7 @@ function newGame() {
         sideFlags: {},
         choices: {}
     };
+    if (logBoxEl) logBoxEl.innerHTML = "";
     document.getElementById("char-name").innerText = "未创建";
     document.getElementById("char-school").innerText = "--";
     document.getElementById("char-date").innerText = "金元--年--月--日";
@@ -1605,7 +1606,7 @@ function advanceMainStage() {
 
     switch (nextStage) {
         case 1:
-            addLog("郭靖告诉你，杨过的消息。主线【神雕侠侣】开启！", "system");
+            addLog("郭靖告诉了你杨过的消息。主线【神雕侠侣】开启！", "system");
             addLog("提示：前往【酒馆】找郭靖对话。");
             break;
         case 2:
