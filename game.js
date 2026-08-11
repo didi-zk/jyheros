@@ -1,5 +1,5 @@
 // ========== 游戏版本 ==========
-const GAME_VERSION = "v1.0.2";
+const GAME_VERSION = "v1.0.3";
 
 async function checkForUpdates(manual) {
     try {
