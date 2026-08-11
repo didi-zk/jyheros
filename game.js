@@ -59,6 +59,7 @@ const gameData = {
                 { text: "喝酒恢复气血(10银两)", action: "drink" },
                 { text: "静坐调息恢复内力(15银两)", action: "restMp" },
                 { text: "打听江湖消息", action: "hearNews" },
+                { text: "与郭靖对话", action: "talkGuoJing", condition: () => gameData.character && gameData.character.level >= 3 },
                 { text: "返回城门", next: "start" }
             ]
         },
@@ -156,7 +157,8 @@ const gameData = {
         currentMain: 0,
         completedMains: [],
         sideFlags: {},
-        choices: {}
+        choices: {},
+        guoJingMet: false
     },
     questDefs: {
         mainList: [
@@ -438,6 +440,7 @@ async function renderScene() {
         if (hasGroups) {
             const groups = {};
             scene.options.forEach(opt => {
+                if (opt.condition && !opt.condition()) return;
                 const g = opt.group || "其他";
                 if (!groups[g]) groups[g] = [];
                 groups[g].push(opt);
@@ -469,12 +472,13 @@ async function renderScene() {
             optionsListEl.appendChild(wrapper);
         } else {
             scene.options.forEach(opt => {
+                if (opt.condition && !opt.condition()) return;
                 const li = document.createElement("li");
                 li.innerText = opt.text;
                 li.onclick = () => {
                     playSound("click");
                     handleOptionClick(opt);
-                }
+                };
                 optionsListEl.appendChild(li);
             });
         }
@@ -556,6 +560,17 @@ function runAction(actionName) {
             if (!processQuestThroughAction("hearNews")) {
                 addLog("酒客：听说郊外最近山贼作乱！");
             }
+            break;
+        case "talkGuoJing":
+            if (!char) break;
+            if (gameData.quests.currentMain >= 1) {
+                addLog("郭靖：少侠，我们已是老相识了，有事找我便可。");
+                break;
+            }
+            openDialog("guojing", () => {
+                saveGame();
+                renderScene();
+            });
             break;
         case "trainAtk":
             if (!char) break;
@@ -1169,6 +1184,202 @@ function showBag() {
     alert(msg);
 }
 
+// ========== 对话系统 ==========
+const dialogSystem = {
+    currentDialog: null,
+    currentNode: null,
+    typingTimer: null,
+    isTyping: false,
+    onComplete: null
+};
+
+const DIALOGS = {
+    guojing: {
+        avatar: "🤠",
+        name: "郭靖",
+        nodes: {
+            start: {
+                text: "哎！这位仁兄，瞧你面生得很，可是初到襄阳？",
+                options: [
+                    { text: "正是，正要闯荡江湖！", next: "path1_node1" },
+                    { text: "路过而已，告辞。", next: "path2_node1" }
+                ]
+            },
+            path1_node1: {
+                text: "好说好说！江湖路远，若有难处，尽管开口！",
+                next: "path1_node2"
+            },
+            path1_node2: {
+                text: "对了，我正在寻找几位江湖朋友同行，你可愿加入？",
+                options: [
+                    { text: "愿意！", next: "accept_quest" },
+                    { text: "改日再说吧。", next: "end" }
+                ]
+            },
+            path2_node1: {
+                text: "也好，江湖再会！",
+                next: "end"
+            },
+            accept_quest: {
+                text: "太好了！我们这就出发，去找那位流落江湖的少年杨过。你前往酒馆打听消息便可找到我们。",
+                next: "end",
+                onSelect: () => {
+                    gameData.quests.guoJingMet = true;
+                    addLog("郭靖邀请你同行，主线【神雕侠侣】即将开启！", "system");
+                }
+            },
+            end: {
+                text: "（对话结束）",
+                isEnd: true
+            }
+        }
+    }
+};
+
+function openDialog(dialogId, onComplete) {
+    console.log("[Dialog] openDialog called with id:", dialogId);
+    const dialog = DIALOGS[dialogId];
+    if (!dialog) {
+        console.warn("[Dialog] Dialog not found:", dialogId);
+        return;
+    }
+    dialogSystem.currentDialog = dialog;
+    dialogSystem.currentNode = dialog.nodes.start;
+    dialogSystem.onComplete = onComplete || null;
+    dialogSystem.isTyping = false;
+    _actionBusy = false;
+
+    const overlay = document.getElementById("dialog-overlay");
+    const avatar = document.getElementById("dialog-avatar");
+    const name = document.getElementById("dialog-name");
+    avatar.innerText = dialog.avatar;
+    name.innerText = dialog.name;
+    overlay.style.display = "block";
+    console.log("[Dialog] overlay displayed, starting renderDialogNode");
+
+    renderDialogNode();
+}
+
+function renderDialogNode() {
+    const node = dialogSystem.currentNode;
+    if (!node) return;
+    const contentEl = document.getElementById("dialog-content");
+    const optionsEl = document.getElementById("dialog-options");
+    const continueEl = document.getElementById("dialog-continue");
+
+    optionsEl.innerHTML = "";
+    continueEl.style.display = "none";
+
+    if (node.isEnd) {
+        contentEl.classList.remove("dialog-typing");
+        contentEl.innerText = node.text;
+        continueEl.style.display = "block";
+        continueEl.innerText = "▼ 点击关闭 ▼";
+        return;
+    }
+
+    if (dialogSystem.isTyping) {
+        clearInterval(dialogSystem.typingTimer);
+    }
+    dialogSystem.isTyping = true;
+
+    contentEl.classList.add("dialog-typing");
+    contentEl.innerText = "";
+
+    let idx = 0;
+    dialogSystem.typingTimer = setInterval(() => {
+        if (idx < node.text.length) {
+            contentEl.innerText += node.text[idx];
+            idx++;
+        } else {
+            clearInterval(dialogSystem.typingTimer);
+            dialogSystem.isTyping = false;
+            contentEl.classList.remove("dialog-typing");
+            showDialogOptions(node);
+        }
+    }, 40);
+}
+
+function skipTyping() {
+    if (!dialogSystem.isTyping) return;
+    clearInterval(dialogSystem.typingTimer);
+    const node = dialogSystem.currentNode;
+    const contentEl = document.getElementById("dialog-content");
+    contentEl.classList.remove("dialog-typing");
+    contentEl.innerText = node.text;
+    dialogSystem.isTyping = false;
+    showDialogOptions(node);
+}
+
+function showDialogOptions(node) {
+    const optionsEl = document.getElementById("dialog-options");
+    const continueEl = document.getElementById("dialog-continue");
+    optionsEl.innerHTML = "";
+
+    if (node.options) {
+        node.options.forEach((opt, i) => {
+            const btn = document.createElement("button");
+            btn.className = "dialog-option";
+            btn.innerHTML = `<span class="option-prefix">${String.fromCharCode(65 + i)}.</span> ${opt.text}`;
+            btn.onclick = () => selectDialogOption(opt);
+            optionsEl.appendChild(btn);
+        });
+    } else if (node.next) {
+        continueEl.style.display = "block";
+        continueEl.innerText = "▼ 点击继续 ▼";
+    }
+}
+
+function selectDialogOption(opt) {
+    if (opt.onSelect) opt.onSelect();
+    if (opt.next) {
+        const node = dialogSystem.currentDialog.nodes[opt.next];
+        dialogSystem.currentNode = node;
+        renderDialogNode();
+    } else {
+        closeDialog();
+    }
+}
+
+function advanceDialog() {
+    if (dialogSystem.isTyping) {
+        skipTyping();
+        return;
+    }
+    const node = dialogSystem.currentNode;
+    if (!node) return;
+
+    if (node.isEnd) {
+        closeDialog();
+        return;
+    }
+
+    if (node.options) return;
+
+    if (node.next) {
+        const nextNode = dialogSystem.currentDialog.nodes[node.next];
+        dialogSystem.currentNode = nextNode;
+        renderDialogNode();
+    }
+}
+
+function closeDialog() {
+    const overlay = document.getElementById("dialog-overlay");
+    if (overlay) overlay.style.display = "none";
+    if (dialogSystem.typingTimer) {
+        clearInterval(dialogSystem.typingTimer);
+        dialogSystem.typingTimer = null;
+    }
+    dialogSystem.isTyping = false;
+    dialogSystem.currentDialog = null;
+    dialogSystem.currentNode = null;
+    if (dialogSystem.onComplete) {
+        const cb = dialogSystem.onComplete;
+        dialogSystem.onComplete = null;
+        cb();
+    }
+}
+
 // ========== 战斗系统 ==========
 function startBattle() {
     gameData.inBattle = true;
@@ -1577,6 +1788,14 @@ window.onload = function () {
             dateEl.innerText = formatDate();
         }
     }, 1000);
+    document.addEventListener("keydown", (e) => {
+        const overlay = document.getElementById("dialog-overlay");
+        if (!overlay || overlay.style.display === "none") return;
+        if (e.code === "Space" || e.code === "Enter") {
+            e.preventDefault();
+            advanceDialog();
+        }
+    });
 }
 // ========== 任务系统 ==========
 function openQuestModal() {
